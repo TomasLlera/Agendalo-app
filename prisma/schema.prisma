@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum EstadoTurno {
+  PENDIENTE_PAGO
+  CONFIRMADO
+  CANCELADO
+  COMPLETADO
+}
+
+model Profesional {
+  id               String              @id @default(cuid())
+  clerkUserId      String              @unique
+  email            String
+  nombre           String
+  slug             String              @unique
+  descripcion      String?
+  fotoUrl          String?
+  telefono         String?
+  timezone         String              @default("America/Argentina/Buenos_Aires")
+  plan             Plan                @default(FREE)
+  mpAccessToken    String?
+  mpUserId         String?
+  mpSubscriptionId String?
+  planExpiresAt    DateTime?
+  servicios        Servicio[]
+  horarios         HorarioDisponible[]
+  bloqueos         Bloqueo[]
+  turnos           Turno[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([slug])
+}
+
+model Servicio {
+  id              String      @id @default(cuid())
+  profesional     Profesional @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+  profesionalId   String
+  nombre          String
+  descripcion     String?
+  duracionMinutos Int
+  precio          Decimal     @db.Decimal(10, 2)
+  moneda          String      @default("ARS")
+  requierePago    Boolean     @default(false)
+  activo          Boolean     @default(true)
+  turnos          Turno[]
+  createdAt       DateTime    @default(now())
+
+  @@index([profesionalId])
+}
+
+model HorarioDisponible {
+  id            String      @id @default(cuid())
+  profesional   Profesional @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+  profesionalId String
+  diaSemana     Int
+  horaInicio    String
+  horaFin       String
+
+  @@index([profesionalId])
+}
+
+model Bloqueo {
+  id            String      @id @default(cuid())
+  profesional   Profesional @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+  profesionalId String
+  fechaInicio   DateTime
+  fechaFin      DateTime
+  motivo        String?
+
+  @@index([profesionalId, fechaInicio])
+}
+
+model Turno {
+  id                     String      @id @default(cuid())
+  profesional            Profesional @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+  profesionalId          String
+  servicio               Servicio    @relation(fields: [servicioId], references: [id])
+  servicioId             String
+  clienteNombre          String
+  clienteTelefono        String
+  clienteEmail           String?
+  fechaInicio            DateTime
+  fechaFin               DateTime
+  estado                 EstadoTurno @default(CONFIRMADO)
+  mpPaymentId            String?
+  recordatorio24hEnviado Boolean     @default(false)
+  recordatorio1hEnviado  Boolean     @default(false)
+  notas                  String?
+  createdAt              DateTime    @default(now())
+
+  @@index([profesionalId, fechaInicio])
+  @@index([estado, fechaInicio])
+}
+
+model EventoWebhook {
+  id          String   @id @default(cuid())
+  proveedor   String
+  externalId  String
+  payload     Json
+  procesadoAt DateTime @default(now())
+
+  @@unique([proveedor, externalId])
+}
