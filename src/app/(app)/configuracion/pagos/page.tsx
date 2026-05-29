@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CheckCircle2, CreditCard } from "lucide-react";
 import { getCurrentProfesional } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { conectarMercadoPago, desconectarMercadoPago } from "./actions";
+import { DatosBancariosForm } from "./datos-bancarios-form";
 
 export const metadata: Metadata = {
   title: "Pagos — Agendalo",
@@ -30,6 +32,17 @@ export default async function PagosPage({
   const { conectado, error } = await searchParams;
   const estaConectado = Boolean(profesional.mpAccessToken);
   const mensajeError = error ? MENSAJES_ERROR[error] : undefined;
+
+  const datosBancarios = await prisma.datosBancarios.findUnique({
+    where: { profesionalId: profesional.id },
+  });
+  const datosDefaults = {
+    cbu: datosBancarios?.cbu ?? "",
+    alias: datosBancarios?.alias ?? "",
+    banco: datosBancarios?.banco ?? "",
+    titular: datosBancarios?.titular ?? "",
+    cuit: datosBancarios?.cuit ?? "",
+  };
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -86,6 +99,19 @@ export default async function PagosPage({
               </Button>
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Datos bancarios</CardTitle>
+          <CardDescription>
+            Para los servicios con método “Transferencia”. Se muestran al
+            cliente al confirmar la reserva para que te transfiera.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DatosBancariosForm defaults={datosDefaults} />
         </CardContent>
       </Card>
     </div>

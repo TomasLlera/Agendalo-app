@@ -10,13 +10,18 @@ export type ResultadoServicio = { ok: true } | { ok: false; error: string };
 
 /** Construye el objeto `data` de Prisma a partir de los valores validados. */
 function aDatosPrisma(d: ServicioFormValues) {
+  // `SIN_PAGO` fuerza `requierePago=false` para mantener consistencia con la
+  // semántica histórica del flujo de reserva, aunque el usuario haya tildado
+  // la casilla por error.
+  const requierePago = d.metodoPago === "SIN_PAGO" ? false : d.requierePago;
   return {
     nombre: d.nombre,
     descripcion: d.descripcion === "" ? null : d.descripcion,
     duracionMinutos: d.duracionMinutos,
     precio: new Decimal(d.precio).toFixed(2),
     moneda: d.moneda,
-    requierePago: d.requierePago,
+    requierePago,
+    metodoPago: d.metodoPago,
   };
 }
 

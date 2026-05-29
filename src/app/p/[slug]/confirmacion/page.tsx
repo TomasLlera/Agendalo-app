@@ -35,7 +35,10 @@ export default async function ConfirmacionPage({
 
   const turno = await prisma.turno.findUnique({
     where: { id: turnoId },
-    include: { servicio: true, profesional: true },
+    include: {
+      servicio: true,
+      profesional: { include: { datosBancarios: true } },
+    },
   });
   if (!turno || turno.profesional.slug !== slug) notFound();
 
@@ -100,10 +103,44 @@ export default async function ConfirmacionPage({
         <Detalle label="A nombre de" valor={turno.clienteNombre} />
       </div>
 
-      {pendientePago ? (
+      {pendientePago && turno.servicio.metodoPago === "TRANSFERENCIA" &&
+      turno.profesional.datosBancarios ? (
+        <div className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm">
+          <p className="font-medium text-warning">
+            Completá el pago por transferencia
+          </p>
+          <div className="mt-2 space-y-1 text-foreground">
+            {turno.profesional.datosBancarios.alias ? (
+              <p>
+                Alias:{" "}
+                <strong>{turno.profesional.datosBancarios.alias}</strong>
+              </p>
+            ) : null}
+            {turno.profesional.datosBancarios.cbu ? (
+              <p>
+                CBU:{" "}
+                <strong>{turno.profesional.datosBancarios.cbu}</strong>
+              </p>
+            ) : null}
+            {turno.profesional.datosBancarios.banco ? (
+              <p>Banco: {turno.profesional.datosBancarios.banco}</p>
+            ) : null}
+            {turno.profesional.datosBancarios.titular ? (
+              <p>Titular: {turno.profesional.datosBancarios.titular}</p>
+            ) : null}
+            {turno.profesional.datosBancarios.cuit ? (
+              <p>CUIT: {turno.profesional.datosBancarios.cuit}</p>
+            ) : null}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Una vez acreditado, recibirás la confirmación por email.
+          </p>
+        </div>
+      ) : null}
+
+      {pendientePago && turno.servicio.metodoPago === "MERCADOPAGO" ? (
         <p className="mt-4 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
-          La integración con Mercado Pago se completa en el Step 10. Por ahora
-          el turno queda en estado pendiente de pago.
+          Tu turno queda reservado una vez completado el pago en Mercado Pago.
         </p>
       ) : null}
 

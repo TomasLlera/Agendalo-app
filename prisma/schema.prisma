@@ -18,6 +18,13 @@ enum EstadoTurno {
   COMPLETADO
 }
 
+enum MetodoPago {
+  MERCADOPAGO
+  TRANSFERENCIA
+  EFECTIVO
+  SIN_PAGO
+}
+
 model Profesional {
   id               String              @id @default(cuid())
   clerkUserId      String              @unique
@@ -37,6 +44,7 @@ model Profesional {
   horarios         HorarioDisponible[]
   bloqueos         Bloqueo[]
   turnos           Turno[]
+  datosBancarios   DatosBancarios?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -53,6 +61,7 @@ model Servicio {
   precio          Decimal     @db.Decimal(10, 2)
   moneda          String      @default("ARS")
   requierePago    Boolean     @default(false)
+  metodoPago      MetodoPago  @default(MERCADOPAGO)
   activo          Boolean     @default(true)
   turnos          Turno[]
   createdAt       DateTime    @default(now())
@@ -102,6 +111,19 @@ model Turno {
 
   @@index([profesionalId, fechaInicio])
   @@index([estado, fechaInicio])
+}
+
+model DatosBancarios {
+  id            String      @id @default(cuid())
+  profesional   Profesional @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+  profesionalId String      @unique
+  cbu           String?
+  alias         String?
+  banco         String?
+  titular       String?
+  cuit          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model EventoWebhook {

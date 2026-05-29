@@ -13,6 +13,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   DURACIONES,
+  METODOS_PAGO,
   MONEDAS,
   servicioSchema,
   type ServicioFormValues,
@@ -48,6 +49,7 @@ export function ServicioForm(props: ServicioFormProps) {
             precio: props.servicio.precio,
             moneda: props.servicio.moneda,
             requierePago: props.servicio.requierePago,
+            metodoPago: props.servicio.metodoPago,
           }
         : {
             nombre: "",
@@ -56,10 +58,13 @@ export function ServicioForm(props: ServicioFormProps) {
             precio: "",
             moneda: "ARS",
             requierePago: false,
+            metodoPago: "MERCADOPAGO",
           },
   });
 
   const descripcion = useWatch({ control, name: "descripcion" }) ?? "";
+  const metodoPago = useWatch({ control, name: "metodoPago" }) ?? "MERCADOPAGO";
+  const requiereCobroAlReservar = metodoPago === "MERCADOPAGO";
 
   function onSubmit(values: ServicioFormValues) {
     startTransition(async () => {
@@ -163,22 +168,57 @@ export function ServicioForm(props: ServicioFormProps) {
             </div>
           </div>
 
-          {/* Requiere pago */}
-          <label className="flex items-start gap-3 rounded-lg border border-border bg-surface p-3">
-            <input
-              type="checkbox"
-              {...register("requierePago")}
-              className="mt-0.5 size-4 shrink-0 accent-primary"
-            />
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">
-                Requiere pago al reservar
+          {/* Método de pago */}
+          <div className="grid gap-2">
+            <Label htmlFor="metodoPago">Método de pago</Label>
+            <select
+              id="metodoPago"
+              {...register("metodoPago")}
+              aria-invalid={!!errors.metodoPago}
+              className={SELECT_CLASS}
+            >
+              {METODOS_PAGO.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+            {errors.metodoPago ? (
+              <p className="text-sm text-destructive">
+                {errors.metodoPago.message}
+              </p>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              {metodoPago === "MERCADOPAGO"
+                ? "El cliente paga online al reservar."
+                : metodoPago === "TRANSFERENCIA"
+                  ? "Se muestran tus datos bancarios al cliente al confirmar."
+                  : metodoPago === "EFECTIVO"
+                    ? "El cliente paga en el lugar."
+                    : "Reserva sin cargo."}
+            </p>
+          </div>
+
+          {/* Requiere pago al reservar (sólo MP) */}
+          {requiereCobroAlReservar ? (
+            <label className="flex items-start gap-3 rounded-lg border border-border bg-surface p-3">
+              <input
+                type="checkbox"
+                {...register("requierePago")}
+                className="mt-0.5 size-4 shrink-0 accent-primary"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  Requiere pago al reservar
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  El cliente paga por Mercado Pago antes de confirmar el turno.
+                </span>
               </span>
-              <span className="text-xs text-muted-foreground">
-                El cliente paga por Mercado Pago antes de confirmar el turno.
-              </span>
-            </span>
-          </label>
+            </label>
+          ) : (
+            <input type="hidden" {...register("requierePago")} />
+          )}
 
           {/* Descripción */}
           <div className="grid gap-2">

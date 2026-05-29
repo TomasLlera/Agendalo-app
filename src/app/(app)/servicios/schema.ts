@@ -10,8 +10,17 @@ export const MONEDAS = [
   { value: "USD", label: "Dólar (USD)" },
 ] as const;
 
+/** Métodos de pago disponibles para un servicio. */
+export const METODOS_PAGO = [
+  { value: "MERCADOPAGO", label: "Mercado Pago (online)" },
+  { value: "TRANSFERENCIA", label: "Transferencia bancaria (CBU/Alias)" },
+  { value: "EFECTIVO", label: "Efectivo en el lugar" },
+  { value: "SIN_PAGO", label: "No requiere pago" },
+] as const;
+
 const DURACION_VALUES: number[] = [...DURACIONES];
 const MONEDA_VALUES: string[] = MONEDAS.map((m) => m.value);
+const METODO_PAGO_VALUES = METODOS_PAGO.map((m) => m.value);
 
 /** Tope de un campo `Decimal(10, 2)`: 8 dígitos enteros + 2 decimales. */
 const PRECIO_MAX = "99999999.99";
@@ -66,6 +75,12 @@ export const servicioSchema = z.object({
     .string()
     .refine((v) => MONEDA_VALUES.includes(v), "Elegí una moneda válida."),
   requierePago: z.boolean(),
+  metodoPago: z
+    .enum(["MERCADOPAGO", "TRANSFERENCIA", "EFECTIVO", "SIN_PAGO"])
+    .refine(
+      (v) => METODO_PAGO_VALUES.includes(v),
+      "Elegí un método de pago válido.",
+    ),
 });
 
 export type ServicioFormValues = z.infer<typeof servicioSchema>;

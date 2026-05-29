@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       moneda: true,
       duracionMinutos: true,
       requierePago: true,
+      metodoPago: true,
     },
   });
   if (!servicio) {
@@ -121,11 +122,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Si el servicio requiere pago y el profesional tiene Mercado Pago
-  // conectado, se genera la preferencia de pago. Si MP falla, el turno igual
-  // queda creado en estado PENDIENTE_PAGO (no se aborta la reserva).
+  // Flujo de pago según `metodoPago` del servicio:
+  // - MERCADOPAGO: crea preferencia y devuelve `checkoutUrl` (turno queda
+  //   PENDIENTE_PAGO; lo confirma el webhook al aprobar el pago).
+  // - TRANSFERENCIA: turno queda PENDIENTE_PAGO; la confirmación muestra
+  //   los datos bancarios del profesional.
+  // - EFECTIVO / SIN_PAGO: el turno ya quedó CONFIRMADO en el INSERT.
   let checkoutUrl: string | null = null;
-  if (servicio.requierePago && profesional.mpAccessToken) {
+  if (
+    servicio.requierePago &&
+    servicio.metodoPago === "MERCADOPAGO" &&
+    profesional.mpAccessToken
+  ) {
     try {
       const { initPoint } = await crearPreferenceTurno(
         {
@@ -173,6 +181,7 @@ export async function POST(req: NextRequest) {
     {
       turnoId: turno.id,
       requierePago: servicio.requierePago,
+      metodoPago: servicio.metodoPago,
       checkoutUrl,
     },
     { status: 201 },
