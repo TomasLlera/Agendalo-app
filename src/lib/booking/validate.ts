@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { normalizarEmail, sentenceCase, tituloCase } from "@/lib/text";
+import { normalizarEmail, sentenceCase } from "@/lib/text";
 
 /** Teléfono en formato E.164: `+` seguido de 8 a 15 dígitos. */
 const TELEFONO_RE = /^\+\d{8,15}$/;
@@ -12,7 +12,7 @@ export const datosClienteSchema = z.object({
     .trim()
     .min(2, "Ingresá tu nombre.")
     .max(80, "El nombre es demasiado largo.")
-    .transform(tituloCase),
+    .transform(sentenceCase),
   telefono: z
     .string()
     .trim()

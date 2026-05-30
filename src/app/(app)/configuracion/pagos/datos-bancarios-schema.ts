@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { tituloCase } from "@/lib/text";
+import { sentenceCase } from "@/lib/text";
 
 /**
  * Lista de bancos y billeteras virtuales más usadas en Argentina.
@@ -56,7 +56,7 @@ export const datosBancariosSchema = z
       .string()
       .trim()
       .max(80, "Máximo 80 caracteres.")
-      .transform(tituloCase),
+      .transform(sentenceCase),
     cuit: z
       .string()
       .trim()

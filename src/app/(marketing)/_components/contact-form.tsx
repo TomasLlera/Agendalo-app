@@ -6,11 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CheckCircle2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { normalizarEmail, sentenceCase, tituloCase } from "@/lib/text";
+import { normalizarEmail, sentenceCase } from "@/lib/text";
 
 const contactoSchema = z.object({
-  nombre: z.string().trim().min(2, "Tu nombre").transform(tituloCase),
-  apellido: z.string().trim().min(2, "Tu apellido").transform(tituloCase),
+  nombre: z.string().trim().min(2, "Tu nombre").transform(sentenceCase),
+  apellido: z.string().trim().min(2, "Tu apellido").transform(sentenceCase),
   telefono: z
     .string()
     .trim()
