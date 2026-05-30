@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizarEmail, sentenceCase, tituloCase } from "@/lib/text";
 
 /** Teléfono en formato E.164: `+` seguido de 8 a 15 dígitos. */
 const TELEFONO_RE = /^\+\d{8,15}$/;
@@ -10,7 +11,8 @@ export const datosClienteSchema = z.object({
     .string()
     .trim()
     .min(2, "Ingresá tu nombre.")
-    .max(80, "El nombre es demasiado largo."),
+    .max(80, "El nombre es demasiado largo.")
+    .transform(tituloCase),
   telefono: z
     .string()
     .trim()
@@ -19,11 +21,13 @@ export const datosClienteSchema = z.object({
     .string()
     .trim()
     .max(120, "El email es demasiado largo.")
-    .refine((v) => v === "" || EMAIL_RE.test(v), "Email inválido."),
+    .refine((v) => v === "" || EMAIL_RE.test(v), "Email inválido.")
+    .transform(normalizarEmail),
   notas: z
     .string()
     .trim()
-    .max(280, "Las notas no pueden superar los 280 caracteres."),
+    .max(280, "Las notas no pueden superar los 280 caracteres.")
+    .transform(sentenceCase),
 });
 
 export type DatosCliente = z.infer<typeof datosClienteSchema>;

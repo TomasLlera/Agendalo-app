@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sentenceCase } from "@/lib/text";
 
 /** `HH:mm` en formato 24 h. */
 const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -30,7 +31,8 @@ export const bloqueoSchema = z
     motivo: z
       .string()
       .trim()
-      .max(120, "El motivo no puede superar los 120 caracteres."),
+      .max(120, "El motivo no puede superar los 120 caracteres.")
+      .transform(sentenceCase),
   })
   .refine((b) => b.fechaInicio <= b.fechaFin, {
     message: "La fecha de fin no puede ser anterior al inicio.",

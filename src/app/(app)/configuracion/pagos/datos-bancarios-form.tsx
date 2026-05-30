@@ -1,17 +1,23 @@
 "use client";
 
-import { useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useState, useTransition } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  BANCOS,
   datosBancariosSchema,
   type DatosBancariosFormValues,
 } from "./datos-bancarios-schema";
 import { guardarDatosBancarios } from "./actions";
+
+const SELECT_CLASS =
+  "h-9 w-full rounded-lg border border-input bg-surface px-2.5 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive";
+
+const BANCOS_VALUES = new Set<string>(BANCOS.map((b) => b.value));
 
 type Props = {
   defaults: DatosBancariosFormValues;
@@ -20,14 +26,34 @@ type Props = {
 export function DatosBancariosForm({ defaults }: Props) {
   const [isPending, startTransition] = useTransition();
 
+  // Si el banco guardado no está en la lista predefinida, asumimos que
+  // venía de "Otro" y precargamos el input libre con su valor.
+  const initialBancoEnLista =
+    defaults.banco === "" || BANCOS_VALUES.has(defaults.banco);
+  const [bancoSelect, setBancoSelect] = useState<string>(
+    initialBancoEnLista ? defaults.banco : "Otro",
+  );
+  const [bancoOtro, setBancoOtro] = useState<string>(
+    initialBancoEnLista ? "" : defaults.banco,
+  );
+
   const {
     register,
     handleSubmit,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<DatosBancariosFormValues>({
     resolver: zodResolver(datosBancariosSchema),
     defaultValues: defaults,
   });
+
+  // Mantener el campo `banco` del form sincronizado con la combinación
+  // de select + input libre.
+  const bancoActual = useWatch({ control, name: "banco" });
+  if (bancoActual !== (bancoSelect === "Otro" ? bancoOtro : bancoSelect)) {
+    setValue("banco", bancoSelect === "Otro" ? bancoOtro : bancoSelect);
+  }
 
   function onSubmit(values: DatosBancariosFormValues) {
     startTransition(async () => {
@@ -72,12 +98,30 @@ export function DatosBancariosForm({ defaults }: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="banco">Banco</Label>
-          <Input
+          <select
             id="banco"
-            {...register("banco")}
+            value={bancoSelect}
+            onChange={(e) => setBancoSelect(e.target.value)}
+            className={SELECT_CLASS}
             aria-invalid={!!errors.banco}
-            placeholder="Galicia, Santander…"
-          />
+          >
+            <option value="">Elegí un banco…</option>
+            {BANCOS.map((b) => (
+              <option key={b.value} value={b.value}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+          {bancoSelect === "Otro" ? (
+            <Input
+              value={bancoOtro}
+              onChange={(e) => setBancoOtro(e.target.value)}
+              placeholder="Nombre del banco"
+              className="mt-1.5"
+            />
+          ) : null}
+          {/* hidden registrado para que el value llegue al submit */}
+          <input type="hidden" {...register("banco")} />
           {errors.banco ? (
             <p className="text-sm text-destructive">{errors.banco.message}</p>
           ) : null}

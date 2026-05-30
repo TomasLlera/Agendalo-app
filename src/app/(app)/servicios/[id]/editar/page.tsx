@@ -53,6 +53,7 @@ export default async function EditarServicioPage({
             precio: servicio.precio.toString(),
             moneda: servicio.moneda,
             requierePago: servicio.requierePago,
+            metodoPago: servicio.metodoPago,
           }}
         />
       </div>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
-import { CalendarCheck, Clock } from "lucide-react";
+import { CalendarCheck, CalendarPlus, Clock } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 
@@ -144,8 +144,18 @@ export default async function ConfirmacionPage({
         </p>
       ) : null}
 
+      {!pendientePago ? (
+        <a
+          href={`/api/turnos/${turno.id}/ics`}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          <CalendarPlus className="size-4" strokeWidth={1.5} />
+          Agregar a mi calendario
+        </a>
+      ) : null}
+
       <Button
-        className="mt-8 w-full"
+        className="mt-3 w-full"
         variant="outline"
         nativeButton={false}
         render={<Link href={`/p/${slug}`} />}

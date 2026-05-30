@@ -1,4 +1,31 @@
 import { z } from "zod";
+import { tituloCase } from "@/lib/text";
+
+/**
+ * Lista de bancos y billeteras virtuales más usadas en Argentina.
+ * El value se persiste tal cual (el form puede mostrar la label).
+ * "Otro" abre un input libre en el form.
+ */
+export const BANCOS = [
+  { value: "Galicia", label: "Galicia" },
+  { value: "Santander", label: "Santander" },
+  { value: "BBVA", label: "BBVA" },
+  { value: "Macro", label: "Macro" },
+  { value: "Nación", label: "Nación" },
+  { value: "Provincia", label: "Provincia" },
+  { value: "Ciudad", label: "Ciudad" },
+  { value: "Patagonia", label: "Patagonia" },
+  { value: "Supervielle", label: "Supervielle" },
+  { value: "Credicoop", label: "Credicoop" },
+  { value: "ICBC", label: "ICBC" },
+  { value: "HSBC", label: "HSBC" },
+  { value: "Hipotecario", label: "Hipotecario" },
+  { value: "Brubank", label: "Brubank" },
+  { value: "Mercado Pago", label: "Mercado Pago" },
+  { value: "Ualá", label: "Ualá" },
+  { value: "Naranja X", label: "Naranja X" },
+  { value: "Otro", label: "Otro (especificar)" },
+] as const;
 
 /**
  * Validación de datos bancarios para cobrar por transferencia.
@@ -25,7 +52,11 @@ export const datosBancariosSchema = z
         "Alias inválido: 6-20 caracteres alfanuméricos, puntos o guiones.",
       ),
     banco: z.string().trim().max(60, "Máximo 60 caracteres."),
-    titular: z.string().trim().max(80, "Máximo 80 caracteres."),
+    titular: z
+      .string()
+      .trim()
+      .max(80, "Máximo 80 caracteres.")
+      .transform(tituloCase),
     cuit: z
       .string()
       .trim()

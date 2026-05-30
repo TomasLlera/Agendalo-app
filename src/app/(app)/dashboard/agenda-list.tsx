@@ -101,7 +101,14 @@ export function AgendaList({
           onValueChange={(v) => setFiltroServicio(v === null ? FILTRO_TODOS : v)}
         >
           <SelectTrigger size="sm" className="min-w-40">
-            <SelectValue placeholder="Servicio" />
+            <SelectValue placeholder="Servicio">
+              {(value: string) =>
+                value === FILTRO_TODOS
+                  ? "Todos los servicios"
+                  : servicios.find((s) => s.id === value)?.nombre ??
+                    "Servicio"
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={FILTRO_TODOS}>Todos los servicios</SelectItem>

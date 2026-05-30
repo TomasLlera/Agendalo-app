@@ -6,20 +6,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CheckCircle2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { normalizarEmail, sentenceCase, tituloCase } from "@/lib/text";
 
 const contactoSchema = z.object({
-  nombre: z.string().trim().min(2, "Tu nombre"),
-  apellido: z.string().trim().min(2, "Tu apellido"),
+  nombre: z.string().trim().min(2, "Tu nombre").transform(tituloCase),
+  apellido: z.string().trim().min(2, "Tu apellido").transform(tituloCase),
   telefono: z
     .string()
     .trim()
     .min(6, "Tu teléfono"),
-  email: z.string().trim().email("Email inválido"),
+  email: z.string().trim().email("Email inválido").transform(normalizarEmail),
   descripcion: z
     .string()
     .trim()
     .min(10, "Contanos un poco más (mínimo 10 caracteres)")
-    .max(1000, "Máximo 1000 caracteres"),
+    .max(1000, "Máximo 1000 caracteres")
+    .transform(sentenceCase),
 });
 
 type ContactoForm = z.infer<typeof contactoSchema>;

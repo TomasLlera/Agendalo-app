@@ -1,5 +1,6 @@
 import { z } from "zod";
 import Decimal from "decimal.js";
+import { sentenceCase, tituloCase } from "@/lib/text";
 
 /** Duraciones ofrecidas para un servicio (en minutos). */
 export const DURACIONES = [15, 30, 45, 60, 90, 120] as const;
@@ -55,11 +56,13 @@ export const servicioSchema = z.object({
     .string()
     .trim()
     .min(2, "El nombre debe tener al menos 2 caracteres.")
-    .max(80, "El nombre no puede superar los 80 caracteres."),
+    .max(80, "El nombre no puede superar los 80 caracteres.")
+    .transform(sentenceCase),
   descripcion: z
     .string()
     .trim()
-    .max(280, "La descripción no puede superar los 280 caracteres."),
+    .max(280, "La descripción no puede superar los 280 caracteres.")
+    .transform(sentenceCase),
   duracionMinutos: z
     .number()
     .refine((v) => DURACION_VALUES.includes(v), "Elegí una duración válida."),

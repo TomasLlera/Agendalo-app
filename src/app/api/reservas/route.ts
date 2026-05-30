@@ -168,6 +168,7 @@ export async function POST(req: NextRequest) {
           timezone: profesional.timezone,
           slug: profesional.slug,
         },
+        turnoId: turno.id,
       });
     } catch (err) {
       console.error(

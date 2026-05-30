@@ -9,6 +9,7 @@ export type TurnoEmail = {
   fechaInicio: Date;
   servicio: { nombre: string };
   profesional: { nombre: string; timezone: string; slug: string };
+  turnoId?: string;
 };
 
 export type ContactoMensaje = {
@@ -94,6 +95,60 @@ function formatearCuando(turno: TurnoEmail): string {
   );
 }
 
+export type TipoRecordatorioEmail = "24h" | "1h";
+
+/**
+ * Envía un email de recordatorio pre-turno. Va para Free y Pro por igual
+ * (a diferencia de WhatsApp, que es paywall). El caller decide si propaga
+ * el error o sólo loguea.
+ */
+export async function sendRecordatorioTurno(
+  turno: TurnoEmail,
+  tipo: TipoRecordatorioEmail,
+): Promise<{ id: string }> {
+  const resend = resendClient();
+  const from = resendFrom();
+  const cuando = formatearCuando(turno);
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const linkPublico = `${baseUrl}/p/${turno.profesional.slug}`;
+  const cuandoCorto = tipo === "24h" ? "mañana" : "en 1 hora";
+
+  const asunto = `Recordatorio: tu turno con ${turno.profesional.nombre} es ${cuandoCorto}`;
+  const html = `
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 480px; color: #111;">
+      <p>Hola ${escapeHtml(turno.clienteNombre)},</p>
+      <p>
+        Te recordamos que tenés un turno <strong>${escapeHtml(cuandoCorto)}</strong>
+        con <strong>${escapeHtml(turno.profesional.nombre)}</strong> para
+        <strong>${escapeHtml(turno.servicio.nombre)}</strong> el
+        <strong>${escapeHtml(cuando)}</strong>.
+      </p>
+      <p>
+        Si necesitás cancelar o reprogramar, entrá a su página:
+        <a href="${linkPublico}">${linkPublico}</a>
+      </p>
+      <p style="color: #555; font-size: 12px; margin-top: 24px;">— Agendalo</p>
+    </div>
+  `;
+  const text =
+    `Hola ${turno.clienteNombre},\n\n` +
+    `Te recordamos que tenés un turno ${cuandoCorto} con ${turno.profesional.nombre} ` +
+    `para ${turno.servicio.nombre} el ${cuando}.\n\n` +
+    `Cancelar o reprogramar: ${linkPublico}\n\n— Agendalo`;
+
+  const res = await resend.emails.send({
+    from,
+    to: turno.clienteEmail,
+    subject: asunto,
+    html,
+    text,
+  });
+  if (res.error) {
+    throw new Error(`Resend: ${res.error.message ?? "error desconocido"}`);
+  }
+  return { id: res.data?.id ?? "" };
+}
+
 /**
  * Envía el email de confirmación al cliente al reservar un turno. Lanza si
  * Resend falla; el caller (API route / webhook) decide si propagar el error o
@@ -108,6 +163,8 @@ export async function sendConfirmacionReserva(
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const linkPublico = `${baseUrl}/p/${turno.profesional.slug}`;
 
+  const linkICS = turno.turnoId ? `${baseUrl}/api/turnos/${turno.turnoId}/ics` : null;
+
   const asunto = `Tu turno con ${turno.profesional.nombre} está confirmado`;
   const html = `
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 480px; color: #111;">
@@ -117,6 +174,7 @@ export async function sendConfirmacionReserva(
         para <strong>${escapeHtml(turno.servicio.nombre)}</strong> quedó
         confirmado para el <strong>${escapeHtml(cuando)}</strong>.
       </p>
+      ${linkICS ? `<p><a href="${linkICS}">Agregar a mi calendario (.ics)</a></p>` : ""}
       <p>
         Si necesitás cancelar o reprogramar, contactá a ${escapeHtml(turno.profesional.nombre)}
         o entrá a su página:
@@ -128,6 +186,7 @@ export async function sendConfirmacionReserva(
   const text =
     `Hola ${turno.clienteNombre},\n\n` +
     `Tu turno con ${turno.profesional.nombre} para ${turno.servicio.nombre} quedó confirmado para el ${cuando}.\n\n` +
+    (linkICS ? `Agregar a mi calendario: ${linkICS}\n\n` : "") +
     `Si necesitás cancelar o reprogramar, entrá a: ${linkPublico}\n\n— Agendalo`;
 
   const res = await resend.emails.send({

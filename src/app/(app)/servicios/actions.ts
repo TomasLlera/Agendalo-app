@@ -10,10 +10,21 @@ export type ResultadoServicio = { ok: true } | { ok: false; error: string };
 
 /** Construye el objeto `data` de Prisma a partir de los valores validados. */
 function aDatosPrisma(d: ServicioFormValues) {
-  // `SIN_PAGO` fuerza `requierePago=false` para mantener consistencia con la
-  // semántica histórica del flujo de reserva, aunque el usuario haya tildado
-  // la casilla por error.
-  const requierePago = d.metodoPago === "SIN_PAGO" ? false : d.requierePago;
+  // `requierePago` derivado del método para mantener semántica consistente:
+  // - MERCADOPAGO: elección del usuario (checkbox del form).
+  // - TRANSFERENCIA: siempre true (el cliente paga antes y ve CBU/alias).
+  // - EFECTIVO: false (el cliente paga en el lugar, el turno queda
+  //   CONFIRMADO al reservar).
+  // - SIN_PAGO: false (no hay cobro).
+  let requierePago: boolean;
+  if (d.metodoPago === "MERCADOPAGO") {
+    requierePago = d.requierePago;
+  } else if (d.metodoPago === "TRANSFERENCIA") {
+    requierePago = true;
+  } else {
+    requierePago = false;
+  }
+
   return {
     nombre: d.nombre,
     descripcion: d.descripcion === "" ? null : d.descripcion,

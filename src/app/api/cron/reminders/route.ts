@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { isPro } from "@/lib/plan";
+import { sendRecordatorioTurno } from "@/lib/resend/emails";
 import {
   sendReminder,
   type TipoRecordatorio,
@@ -17,6 +18,7 @@ type Resultado = {
   tipo: TipoRecordatorio;
   evaluados: number;
   enviados: number;
+  emailsEnviados: number;
   saltadosFree: number;
   errores: ErrorTurno[];
 };
@@ -76,11 +78,13 @@ async function procesarVentana(
       id: true,
       clienteNombre: true,
       clienteTelefono: true,
+      clienteEmail: true,
       fechaInicio: true,
       servicio: { select: { nombre: true } },
       profesional: {
         select: {
           nombre: true,
+          slug: true,
           timezone: true,
           plan: true,
           planExpiresAt: true,
@@ -93,30 +97,84 @@ async function procesarVentana(
     tipo,
     evaluados: turnos.length,
     enviados: 0,
+    emailsEnviados: 0,
     saltadosFree: 0,
     errores: [],
   };
 
   for (const turno of turnos) {
-    if (!isPro(turno.profesional)) {
-      resultado.saltadosFree++;
-      continue;
-    }
-    try {
-      await sendReminder(
-        {
-          id: turno.id,
-          clienteNombre: turno.clienteNombre,
-          clienteTelefono: turno.clienteTelefono,
-          fechaInicio: turno.fechaInicio,
-          servicio: { nombre: turno.servicio.nombre },
-          profesional: {
-            nombre: turno.profesional.nombre,
-            timezone: turno.profesional.timezone,
+    const esPro = isPro(turno.profesional);
+    let notificacionEnviada = false;
+
+    // Email recordatorio: va para Free y Pro por igual (no es WhatsApp, no
+    // hay costo por mensaje). Sólo si el cliente dejó email.
+    if (turno.clienteEmail) {
+      try {
+        await sendRecordatorioTurno(
+          {
+            clienteNombre: turno.clienteNombre,
+            clienteEmail: turno.clienteEmail,
+            fechaInicio: turno.fechaInicio,
+            servicio: { nombre: turno.servicio.nombre },
+            profesional: {
+              nombre: turno.profesional.nombre,
+              timezone: turno.profesional.timezone,
+              slug: turno.profesional.slug,
+            },
           },
-        },
-        tipo,
-      );
+          tipo,
+        );
+        resultado.emailsEnviados++;
+        notificacionEnviada = true;
+      } catch (err) {
+        const mensaje = err instanceof Error ? err.message : String(err);
+        console.error(
+          `[cron:reminders] email turno=${turno.id} tipo=${tipo} error=${mensaje}`,
+        );
+        resultado.errores.push({
+          turnoId: turno.id,
+          mensaje: `email: ${mensaje}`,
+        });
+      }
+    }
+
+    // WhatsApp: sólo Pro (paywall).
+    if (esPro) {
+      try {
+        await sendReminder(
+          {
+            id: turno.id,
+            clienteNombre: turno.clienteNombre,
+            clienteTelefono: turno.clienteTelefono,
+            fechaInicio: turno.fechaInicio,
+            servicio: { nombre: turno.servicio.nombre },
+            profesional: {
+              nombre: turno.profesional.nombre,
+              timezone: turno.profesional.timezone,
+            },
+          },
+          tipo,
+        );
+        resultado.enviados++;
+        notificacionEnviada = true;
+      } catch (err) {
+        const mensaje = err instanceof Error ? err.message : String(err);
+        console.error(
+          `[cron:reminders] whatsapp turno=${turno.id} tipo=${tipo} error=${mensaje}`,
+        );
+        resultado.errores.push({
+          turnoId: turno.id,
+          mensaje: `whatsapp: ${mensaje}`,
+        });
+      }
+    } else {
+      resultado.saltadosFree++;
+    }
+
+    // Marcar flag si al menos una notificación salió. Si todas fallaron
+    // (o el turno no tenía email y el profesional es Free), no se marca
+    // y el cron lo reintenta en el próximo tick — dentro de la ventana.
+    if (notificacionEnviada) {
       await prisma.turno.update({
         where: { id: turno.id },
         data:
@@ -124,13 +182,6 @@ async function procesarVentana(
             ? { recordatorio24hEnviado: true }
             : { recordatorio1hEnviado: true },
       });
-      resultado.enviados++;
-    } catch (err) {
-      const mensaje = err instanceof Error ? err.message : String(err);
-      console.error(
-        `[cron:reminders] turno=${turno.id} tipo=${tipo} error=${mensaje}`,
-      );
-      resultado.errores.push({ turnoId: turno.id, mensaje });
     }
   }
 
