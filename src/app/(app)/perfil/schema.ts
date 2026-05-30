@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { esTimezoneValida } from "@/lib/timezones";
-import { sentenceCase } from "@/lib/text";
+import { sentenceCase, tituloCase } from "@/lib/text";
 
 /**
  * Esquema compartido por el formulario de Perfil (cliente, vía `zodResolver`)
@@ -15,7 +15,7 @@ export const perfilSchema = z.object({
     .trim()
     .min(2, "El nombre debe tener al menos 2 caracteres.")
     .max(80, "El nombre no puede superar los 80 caracteres.")
-    .transform(sentenceCase),
+    .transform(tituloCase),
   slug: z
     .string()
     .trim()
