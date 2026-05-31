@@ -123,8 +123,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Flujo de pago según `metodoPago` del servicio:
-  // - MERCADOPAGO: crea preferencia y devuelve `checkoutUrl` (turno queda
-  //   PENDIENTE_PAGO; lo confirma el webhook al aprobar el pago).
+  // - MERCADOPAGO: crea preferencia y persiste `mpPreferenceId` + `mpInitPoint`
+  //   en el Turno. La confirmación monta el Wallet Brick con esos datos.
+  //   El turno queda PENDIENTE_PAGO; lo confirma el webhook al aprobar el pago.
   // - TRANSFERENCIA: turno queda PENDIENTE_PAGO; la confirmación muestra
   //   los datos bancarios del profesional.
   // - EFECTIVO / SIN_PAGO: el turno ya quedó CONFIRMADO en el INSERT.
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
     profesional.mpAccessToken
   ) {
     try {
-      const { initPoint } = await crearPreferenceTurno(
+      const { initPoint, preferenceId } = await crearPreferenceTurno(
         {
           id: turno.id,
           profesionalSlug,
@@ -147,6 +148,13 @@ export async function POST(req: NextRequest) {
         profesional.mpAccessToken,
       );
       checkoutUrl = initPoint || null;
+      await prisma.turno.update({
+        where: { id: turno.id },
+        data: {
+          mpPreferenceId: preferenceId || null,
+          mpInitPoint: initPoint || null,
+        },
+      });
     } catch (err) {
       console.error("Error al crear la preferencia de Mercado Pago:", err);
     }

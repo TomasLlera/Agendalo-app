@@ -38,6 +38,7 @@ model Profesional {
   plan             Plan                @default(FREE)
   mpAccessToken    String?
   mpUserId         String?
+  mpPublicKey      String?
   mpSubscriptionId String?
   planExpiresAt    DateTime?
   servicios        Servicio[]
@@ -104,6 +105,8 @@ model Turno {
   fechaFin               DateTime
   estado                 EstadoTurno @default(CONFIRMADO)
   mpPaymentId            String?
+  mpPreferenceId         String?
+  mpInitPoint            String?
   recordatorio24hEnviado Boolean     @default(false)
   recordatorio1hEnviado  Boolean     @default(false)
   notas                  String?

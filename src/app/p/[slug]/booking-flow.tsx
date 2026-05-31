@@ -121,16 +121,11 @@ export function BookingFlow({
       if (res.status === 201) {
         const respuesta = (data ?? {}) as {
           turnoId?: unknown;
-          checkoutUrl?: unknown;
         };
-        // Servicio con pago + MP conectado → al checkout de Mercado Pago.
-        if (
-          typeof respuesta.checkoutUrl === "string" &&
-          respuesta.checkoutUrl
-        ) {
-          window.location.assign(respuesta.checkoutUrl);
-          return;
-        }
+        // Siempre vamos a la confirmación: ella decide si monta el Wallet
+        // Brick (MP embebido), muestra los datos bancarios (transferencia)
+        // o sólo confirma (efectivo / sin pago). Evita salir de Agendalo
+        // cuando el profesional tiene MP conectado con public_key.
         const turnoId = respuesta.turnoId ? String(respuesta.turnoId) : "";
         router.push(`/p/${slug}/confirmacion?turnoId=${turnoId}`);
         return;

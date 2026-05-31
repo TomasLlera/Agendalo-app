@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Permite recursos de dev (HMR, assets) desde el túnel cloudflared usado
+  // para el smoke test OAuth de MP. Sacar cuando se termine el smoke test.
+  allowedDevOrigins: ["dubai-pearl-piano-fellow.trycloudflare.com"],
 };
 
 export default nextConfig;
