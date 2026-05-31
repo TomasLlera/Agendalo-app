@@ -109,6 +109,7 @@ model Turno {
   mpInitPoint            String?
   recordatorio24hEnviado Boolean     @default(false)
   recordatorio1hEnviado  Boolean     @default(false)
+  cancelToken            String?     @unique
   notas                  String?
   createdAt              DateTime    @default(now())
 

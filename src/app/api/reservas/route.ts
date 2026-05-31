@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { addMinutes } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
@@ -85,6 +86,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Token público para el link de cancelación en el email. 16 bytes = 32 hex
+  // chars: espacio de búsqueda inabarcable por fuerza bruta y único por turno.
+  const cancelToken = randomBytes(16).toString("hex");
+
   // Creación con guarda de concurrencia: si aparece un turno solapado entre
   // la verificación y el insert, la transacción devuelve null → 409.
   const turno = await prisma.$transaction(async (tx) => {
@@ -109,6 +114,7 @@ export async function POST(req: NextRequest) {
         fechaInicio: inicio,
         fechaFin: fin,
         estado: servicio.requierePago ? "PENDIENTE_PAGO" : "CONFIRMADO",
+        cancelToken,
         notas: cliente.notas === "" ? null : cliente.notas,
       },
       select: { id: true },
@@ -177,6 +183,7 @@ export async function POST(req: NextRequest) {
           slug: profesional.slug,
         },
         turnoId: turno.id,
+        cancelToken,
       });
     } catch (err) {
       console.error(

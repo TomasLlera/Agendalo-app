@@ -10,6 +10,7 @@ export type TurnoEmail = {
   servicio: { nombre: string };
   profesional: { nombre: string; timezone: string; slug: string };
   turnoId?: string;
+  cancelToken?: string;
 };
 
 export type ContactoMensaje = {
@@ -164,6 +165,10 @@ export async function sendConfirmacionReserva(
   const linkPublico = `${baseUrl}/p/${turno.profesional.slug}`;
 
   const linkICS = turno.turnoId ? `${baseUrl}/api/turnos/${turno.turnoId}/ics` : null;
+  const linkCancelar =
+    turno.turnoId && turno.cancelToken
+      ? `${baseUrl}/p/${turno.profesional.slug}/turnos/${turno.turnoId}/cancelar?token=${turno.cancelToken}`
+      : null;
 
   const asunto = `Tu turno con ${turno.profesional.nombre} está confirmado`;
   const html = `
@@ -175,8 +180,11 @@ export async function sendConfirmacionReserva(
         confirmado para el <strong>${escapeHtml(cuando)}</strong>.
       </p>
       ${linkICS ? `<p><a href="${linkICS}">Agregar a mi calendario (.ics)</a></p>` : ""}
+      ${linkCancelar
+        ? `<p>Si necesitás cancelar el turno: <a href="${linkCancelar}">cancelar mi turno</a></p>`
+        : ""}
       <p>
-        Si necesitás cancelar o reprogramar, contactá a ${escapeHtml(turno.profesional.nombre)}
+        Cualquier otra consulta, contactá a ${escapeHtml(turno.profesional.nombre)}
         o entrá a su página:
         <a href="${linkPublico}">${linkPublico}</a>
       </p>
@@ -187,7 +195,8 @@ export async function sendConfirmacionReserva(
     `Hola ${turno.clienteNombre},\n\n` +
     `Tu turno con ${turno.profesional.nombre} para ${turno.servicio.nombre} quedó confirmado para el ${cuando}.\n\n` +
     (linkICS ? `Agregar a mi calendario: ${linkICS}\n\n` : "") +
-    `Si necesitás cancelar o reprogramar, entrá a: ${linkPublico}\n\n— Agendalo`;
+    (linkCancelar ? `Cancelar mi turno: ${linkCancelar}\n\n` : "") +
+    `Más info: ${linkPublico}\n\n— Agendalo`;
 
   const res = await resend.emails.send({
     from,
