@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendCancelacionTurno } from "@/lib/resend/emails";
 
@@ -82,25 +82,31 @@ export async function POST(
     );
   }
 
+  // Email de cancelación diferido con `after()`: se manda DESPUÉS de responder,
+  // así el cliente ve "cancelado" al instante en vez de esperar a Resend.
+  // Mejor esfuerzo: si falla, se loguea pero la cancelación ya quedó hecha.
   if (turno.clienteEmail) {
-    try {
-      await sendCancelacionTurno({
-        clienteNombre: turno.clienteNombre,
-        clienteEmail: turno.clienteEmail,
-        fechaInicio: turno.fechaInicio,
-        servicio: { nombre: turno.servicio.nombre },
-        profesional: {
-          nombre: turno.profesional.nombre,
-          timezone: turno.profesional.timezone,
-          slug: turno.profesional.slug,
-        },
-      });
-    } catch (err) {
-      console.error(
-        `[api/turnos/cancelar] email a ${turno.clienteEmail} falló`,
-        err,
-      );
-    }
+    const email = turno.clienteEmail;
+    after(async () => {
+      try {
+        await sendCancelacionTurno({
+          clienteNombre: turno.clienteNombre,
+          clienteEmail: email,
+          fechaInicio: turno.fechaInicio,
+          servicio: { nombre: turno.servicio.nombre },
+          profesional: {
+            nombre: turno.profesional.nombre,
+            timezone: turno.profesional.timezone,
+            slug: turno.profesional.slug,
+          },
+        });
+      } catch (err) {
+        console.error(
+          `[api/turnos/cancelar] email a ${email} falló`,
+          err,
+        );
+      }
+    });
   }
 
   return NextResponse.json({ ok: true });

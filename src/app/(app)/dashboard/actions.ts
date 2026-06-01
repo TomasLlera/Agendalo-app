@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { getCurrentProfesional } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendCancelacionTurno } from "@/lib/resend/emails";
@@ -42,25 +43,27 @@ export async function cancelarTurno(turnoId: string): Promise<ResultadoTurno> {
     data: { estado: "CANCELADO" },
   });
 
+  // Email diferido con `after()`: corre tras responderle al dashboard, así la
+  // UI marca el turno como cancelado sin esperar a Resend. Mejor esfuerzo.
   if (turno.clienteEmail) {
-    try {
-      await sendCancelacionTurno({
-        clienteNombre: turno.clienteNombre,
-        clienteEmail: turno.clienteEmail,
-        fechaInicio: turno.fechaInicio,
-        servicio: { nombre: turno.servicio.nombre },
-        profesional: {
-          nombre: profesional.nombre,
-          timezone: profesional.timezone,
-          slug: profesional.slug,
-        },
-      });
-    } catch (err) {
-      console.error(
-        `[cancelarTurno] email a ${turno.clienteEmail} falló`,
-        err,
-      );
-    }
+    const email = turno.clienteEmail;
+    after(async () => {
+      try {
+        await sendCancelacionTurno({
+          clienteNombre: turno.clienteNombre,
+          clienteEmail: email,
+          fechaInicio: turno.fechaInicio,
+          servicio: { nombre: turno.servicio.nombre },
+          profesional: {
+            nombre: profesional.nombre,
+            timezone: profesional.timezone,
+            slug: profesional.slug,
+          },
+        });
+      } catch (err) {
+        console.error(`[cancelarTurno] email a ${email} falló`, err);
+      }
+    });
   }
 
   revalidatePath("/dashboard");
