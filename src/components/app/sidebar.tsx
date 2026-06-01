@@ -2,27 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  Briefcase,
-  CalendarDays,
-  CalendarX,
-  Clock,
-  Settings,
-  User,
-} from "lucide-react";
 import { Logo } from "@/components/shared/logo";
-import { cn } from "@/lib/utils";
-
-const NAV = [
-  { href: "/dashboard", label: "Agenda", icon: CalendarDays },
-  { href: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
-  { href: "/cancelados", label: "Cancelados", icon: CalendarX },
-  { href: "/servicios", label: "Servicios", icon: Briefcase },
-  { href: "/horarios", label: "Horarios", icon: Clock },
-  { href: "/perfil", label: "Perfil", icon: User },
-  { href: "/configuracion", label: "Configuración", icon: Settings },
-] as const;
+import { NAV, esRutaActiva, navLinkClassName } from "./nav-items";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -33,24 +14,16 @@ export function Sidebar() {
         <Logo href="/dashboard" />
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-3">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150",
-                active
-                  ? "bg-surface-elevated text-foreground ring-1 ring-secondary/30"
-                  : "text-foreground/75 hover:bg-surface-elevated hover:text-foreground",
-              )}
-            >
-              <Icon className="size-4" strokeWidth={1.5} />
-              {label}
-            </Link>
-          );
-        })}
+        {NAV.map(({ href, label, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className={navLinkClassName(esRutaActiva(pathname, href))}
+          >
+            <Icon className="size-4" strokeWidth={1.5} />
+            {label}
+          </Link>
+        ))}
       </nav>
     </aside>
   );
