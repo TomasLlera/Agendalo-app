@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  BarChart3,
   Check,
   CreditCard,
   Link2,
@@ -117,8 +118,9 @@ function Hero() {
           data-reveal
           className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg"
         >
-          Compartí tu link de reservas, organizá tu agenda y cobrá con
-          Mercado Pago. Todo desde un solo lugar.
+          Una herramienta diseñada para ayudarte en el día a día: compartí tu
+          link de reservas, organizá tu agenda y cobrá con Mercado Pago. Todo
+          desde un solo lugar.
         </p>
         <div
           data-reveal
@@ -213,6 +215,13 @@ const FEATURES: Feature[] = [
       "Pedí una seña al reservar o cobrá el total. El dinero entra directo a tu cuenta de Mercado Pago, sin intermediarios.",
     badge: "Pro",
   },
+  {
+    icon: BarChart3,
+    titulo: "Estadísticas de tu negocio",
+    cuerpo:
+      "Seguí tus ingresos por mes y por servicio, descubrí tus días más flojos y compará tu evolución. Tu panel contable, sin planillas.",
+    badge: "Pro",
+  },
 ];
 
 function Features() {
@@ -230,7 +239,7 @@ function Features() {
         </p>
       </header>
       <MotionReveal
-        className="mt-10 grid gap-4 md:grid-cols-3"
+        className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
         immediate={false}
       >
         {FEATURES.map(({ icon: Icon, titulo, cuerpo, badge }) => (
@@ -253,7 +262,7 @@ function Features() {
                 </Badge>
               ) : null}
             </div>
-            <h3 className="mt-4 text-base font-medium">{titulo}</h3>
+            <h3 className="mt-4 text-base font-medium sm:min-h-12">{titulo}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{cuerpo}</p>
           </article>
         ))}
@@ -289,6 +298,7 @@ const PLAN_ROWS = [
   { feature: "Reservas online sin registro para el cliente", free: true, pro: true },
   { feature: "Recordatorios por WhatsApp (24 h + 1 h)", free: false, pro: true },
   { feature: "Cobros y señas con Mercado Pago", free: false, pro: true },
+  { feature: "Estadísticas y reportes contables", free: false, pro: true },
   { feature: "Bloqueos de agenda (vacaciones, francos)", free: true, pro: true },
 ] as const;
 
@@ -316,8 +326,8 @@ function Comparativa() {
           className="flex flex-col rounded-2xl border border-border bg-surface/80 p-6 backdrop-blur"
         >
           <h3 className="text-lg font-semibold">Free</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Lo necesario para tener tu agenda online y empezar a recibir reservas.
+          <p className="mt-1 text-sm text-muted-foreground sm:min-h-11">
+            Todo lo necesario para tener tu agenda online y empezar a recibir reservas.
           </p>
           <p className="mt-6">
             <span className="text-3xl font-semibold">$ 0</span>
@@ -363,8 +373,9 @@ function Comparativa() {
               Recomendado
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Reducí las ausencias con recordatorios automáticos y cobrá online.
+          <p className="mt-1 text-sm text-muted-foreground sm:min-h-11">
+            Reducí ausencias con recordatorios automáticos, cobrá online y
+            analizá el crecimiento de tu negocio.
           </p>
           <p className="mt-6">
             <span className="text-3xl font-semibold">{precio}</span>
