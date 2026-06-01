@@ -42,7 +42,7 @@ export default async function DashboardPage() {
   const inicio60 = addDays(ahora, -60);
   const fin7Dias = addDays(ahora, 7);
 
-  const [proximo, turnosSemana, turnosPagos60, agendaTurnos, serviciosOpcion] =
+  const [proximo, turnosSemana, turnosIngresos60, agendaTurnos, serviciosOpcion] =
     await Promise.all([
       prisma.turno.findFirst({
         where: {
@@ -69,8 +69,10 @@ export default async function DashboardPage() {
       prisma.turno.findMany({
         where: {
           profesionalId: profesional.id,
-          mpPaymentId: { not: null },
-          estado: { not: "CANCELADO" },
+          // Ingresos = turnos efectivamente dados, valuados por precio de
+          // servicio (todos los métodos de pago, no solo MP). Mismo criterio
+          // que /estadisticas. Excluye cancelados y pendientes de pago.
+          estado: { in: ["CONFIRMADO", "COMPLETADO"] },
           fechaInicio: { gte: inicio60 },
         },
         select: {
@@ -105,10 +107,10 @@ export default async function DashboardPage() {
       }),
     ]);
 
-  // Bucketear pagos por día y por mes (en la TZ del profesional).
+  // Bucketear ingresos por día y por mes (en la TZ del profesional).
   const porDia = new Map<string, Decimal>();
   const porMes = new Map<string, Decimal>();
-  for (const t of turnosPagos60) {
+  for (const t of turnosIngresos60) {
     const dia = formatInTimeZone(t.fechaInicio, tz, "yyyy-MM-dd");
     const mesKey = formatInTimeZone(t.fechaInicio, tz, "yyyy-MM");
     const precio = new Decimal(t.servicio.precio.toString());
