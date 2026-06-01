@@ -2,12 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, CalendarDays, Clock, Settings, User } from "lucide-react";
+import {
+  BarChart3,
+  Briefcase,
+  CalendarDays,
+  CalendarX,
+  Clock,
+  Settings,
+  User,
+} from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
+  { href: "/cancelados", label: "Cancelados", icon: CalendarX },
   { href: "/servicios", label: "Servicios", icon: Briefcase },
   { href: "/horarios", label: "Horarios", icon: Clock },
   { href: "/perfil", label: "Perfil", icon: User },
