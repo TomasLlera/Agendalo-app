@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { getCurrentProfesional } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isPro } from "@/lib/plan";
 import { cn } from "@/lib/utils";
 import { rangosFecha } from "./rangos";
 import { ShareLinkCard } from "./share-link-card";
@@ -34,6 +35,11 @@ const formatoARS = new Intl.NumberFormat("es-AR", {
 
 export default async function DashboardPage() {
   const profesional = await getCurrentProfesional();
+  // Las estadísticas de ingresos son una feature Pro (mismo criterio que
+  // /estadisticas). En Free se ocultan los KPIs financieros del dashboard,
+  // pero se mantiene la operación: próximos turnos, su estado de pago,
+  // link público y calendario semanal.
+  const pro = isPro(profesional);
   const tz = profesional.timezone;
   const ahora = new Date();
   const { hoy, semana } = rangosFecha(tz, ahora);
@@ -66,20 +72,25 @@ export default async function DashboardPage() {
         },
         select: { fechaInicio: true },
       }),
-      prisma.turno.findMany({
-        where: {
-          profesionalId: profesional.id,
-          // Ingresos = turnos efectivamente dados, valuados por precio de
-          // servicio (todos los métodos de pago, no solo MP). Mismo criterio
-          // que /estadisticas. Excluye cancelados y pendientes de pago.
-          estado: { in: ["CONFIRMADO", "COMPLETADO"] },
-          fechaInicio: { gte: inicio60 },
-        },
-        select: {
-          fechaInicio: true,
-          servicio: { select: { precio: true } },
-        },
-      }),
+      // Ingresos = turnos efectivamente dados, valuados por precio de servicio
+      // (todos los métodos de pago, no solo MP). Mismo criterio que
+      // /estadisticas. Solo Pro: en Free ni se consulta.
+      pro
+        ? prisma.turno.findMany({
+            where: {
+              profesionalId: profesional.id,
+              // Excluye cancelados y pendientes de pago.
+              estado: { in: ["CONFIRMADO", "COMPLETADO"] },
+              fechaInicio: { gte: inicio60 },
+            },
+            select: {
+              fechaInicio: true,
+              servicio: { select: { precio: true } },
+            },
+          })
+        : Promise.resolve(
+            [] as { fechaInicio: Date; servicio: { precio: Decimal } }[],
+          ),
       prisma.turno.findMany({
         where: {
           profesionalId: profesional.id,
@@ -220,16 +231,18 @@ export default async function DashboardPage() {
         </p>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className={cn("grid gap-6", pro && "md:grid-cols-2")}>
         <ProximoTurnoTile
           turno={proximo}
           fmt={proximoFmt}
         />
-        <IngresosTile
-          valor={ingresosMesStr}
-          deltaPct={deltaPct}
-          prevHadData={!ingresosMesPrev.isZero()}
-        />
+        {pro ? (
+          <IngresosTile
+            valor={ingresosMesStr}
+            deltaPct={deltaPct}
+            prevHadData={!ingresosMesPrev.isZero()}
+          />
+        ) : null}
       </div>
 
       <section className="flex flex-col gap-3">
@@ -244,23 +257,25 @@ export default async function DashboardPage() {
         <AgendaList turnos={agendaTurnosFmt} servicios={opcionesServicio} />
       </section>
 
-      <div className="rounded-xl border border-border bg-surface">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-sm font-medium">Ingresos · últimos 30 días</h2>
-          <span className="text-xs text-muted-foreground">
-            Total {formatoARS.format(
-              Number(
-                serie30
-                  .reduce((s, d) => s + d.ingresos, 0)
-                  .toFixed(0),
-              ),
-            )}
-          </span>
+      {pro ? (
+        <div className="rounded-xl border border-border bg-surface">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3">
+            <h2 className="text-sm font-medium">Ingresos · últimos 30 días</h2>
+            <span className="text-xs text-muted-foreground">
+              Total {formatoARS.format(
+                Number(
+                  serie30
+                    .reduce((s, d) => s + d.ingresos, 0)
+                    .toFixed(0),
+                ),
+              )}
+            </span>
+          </div>
+          <div className="p-3">
+            <IncomeChart data={serie30} />
+          </div>
         </div>
-        <div className="p-3">
-          <IncomeChart data={serie30} />
-        </div>
-      </div>
+      ) : null}
 
       <ShareLinkCard
         slug={profesional.slug}
