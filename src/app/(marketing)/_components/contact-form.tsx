@@ -93,7 +93,7 @@ export function ContactForm() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="mx-auto grid w-full max-w-[640px] gap-4"
+      className="mx-auto grid w-full max-w-[640px] gap-4 rounded-2xl border border-border bg-surface-elevated p-6 shadow-xl shadow-black/30 sm:p-8"
       noValidate
     >
       <div className="grid gap-4 sm:grid-cols-2">

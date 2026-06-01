@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Profesion = {
   gradient: string;
@@ -47,6 +47,30 @@ const DEFAULT_LABEL = "Profesionales independientes en toda LATAM";
  */
 export function SocialProofPill() {
   const [active, setActive] = useState<number | null>(null);
+  // Mientras el usuario interactúa (hover/focus) pausamos la auto-rotación
+  // para no pelear con su intención.
+  const [paused, setPaused] = useState(false);
+
+  // Auto-rotación: cada ~5s resalta el siguiente avatar y, tras recorrer
+  // todos, vuelve al label por defecto antes de reiniciar el ciclo.
+  useEffect(() => {
+    if (paused) return;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (prefersReducedMotion) return;
+
+    const id = window.setInterval(() => {
+      setActive((prev) => {
+        if (prev === null) return 0;
+        if (prev >= PROFESIONES.length - 1) return null;
+        return prev + 1;
+      });
+    }, 5000);
+
+    return () => window.clearInterval(id);
+  }, [paused]);
 
   const label = active === null ? DEFAULT_LABEL : PROFESIONES[active].label;
 
@@ -54,7 +78,11 @@ export function SocialProofPill() {
     <div className="flex items-center gap-3 rounded-full border border-border bg-surface/60 px-4 py-2 backdrop-blur">
       <div
         className="flex -space-x-2"
-        onMouseLeave={() => setActive(null)}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => {
+          setPaused(false);
+          setActive(null);
+        }}
       >
         {PROFESIONES.map((p, i) => {
           const isActive = active === i;
@@ -65,8 +93,14 @@ export function SocialProofPill() {
               type="button"
               aria-label={p.label}
               onMouseEnter={() => setActive(i)}
-              onFocus={() => setActive(i)}
-              onBlur={() => setActive(null)}
+              onFocus={() => {
+                setPaused(true);
+                setActive(i);
+              }}
+              onBlur={() => {
+                setPaused(false);
+                setActive(null);
+              }}
               className={`relative inline-block size-6 cursor-pointer rounded-full border-2 border-surface bg-gradient-to-br transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-foreground/60 ${
                 p.gradient
               } ${
