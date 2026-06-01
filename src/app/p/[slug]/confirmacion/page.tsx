@@ -5,6 +5,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { CalendarCheck, CalendarPlus, Clock } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { isPro } from "@/lib/plan";
 import { Button } from "@/components/ui/button";
 import { MpWalletBrick } from "./mp-wallet-brick";
 
@@ -139,7 +140,9 @@ export default async function ConfirmacionPage({
         </div>
       ) : null}
 
-      {pendientePago && turno.servicio.metodoPago === "MERCADOPAGO" ? (
+      {pendientePago &&
+      turno.servicio.metodoPago === "MERCADOPAGO" &&
+      isPro(turno.profesional) ? (
         <>
           <p className="mt-4 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
             Tu turno queda reservado una vez completado el pago en Mercado Pago.

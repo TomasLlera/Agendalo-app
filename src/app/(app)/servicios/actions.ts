@@ -4,9 +4,13 @@ import { revalidatePath } from "next/cache";
 import Decimal from "decimal.js";
 import { getCurrentProfesional } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isPro } from "@/lib/plan";
 import { servicioSchema, type ServicioFormValues } from "./schema";
 
 export type ResultadoServicio = { ok: true } | { ok: false; error: string };
+
+const ERROR_MP_PRO =
+  "Cobrar con Mercado Pago es parte del plan Pro. Elegí transferencia o efectivo.";
 
 /** Construye el objeto `data` de Prisma a partir de los valores validados. */
 function aDatosPrisma(d: ServicioFormValues) {
@@ -47,6 +51,9 @@ export async function createServicio(raw: unknown): Promise<ResultadoServicio> {
       error: parsed.error.issues[0]?.message ?? "Revisá los datos del servicio.",
     };
   }
+  if (parsed.data.metodoPago === "MERCADOPAGO" && !isPro(profesional)) {
+    return { ok: false, error: ERROR_MP_PRO };
+  }
 
   await prisma.servicio.create({
     data: { profesionalId: profesional.id, ...aDatosPrisma(parsed.data) },
@@ -69,6 +76,9 @@ export async function updateServicio(
       ok: false,
       error: parsed.error.issues[0]?.message ?? "Revisá los datos del servicio.",
     };
+  }
+  if (parsed.data.metodoPago === "MERCADOPAGO" && !isPro(profesional)) {
+    return { ok: false, error: ERROR_MP_PRO };
   }
 
   // `updateMany` con `profesionalId` en el `where` garantiza que el servicio

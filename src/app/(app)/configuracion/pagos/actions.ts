@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentProfesional } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isPro } from "@/lib/plan";
 import { buildAuthUrl } from "@/lib/mercadopago/oauth";
 import {
   datosBancariosSchema,
@@ -21,6 +22,11 @@ export type ResultadoDatosBancarios =
  */
 export async function conectarMercadoPago(): Promise<void> {
   const profesional = await getCurrentProfesional();
+  // Cobrar con Mercado Pago es una feature del plan Pro. Guard defensivo: la UI
+  // ya esconde el botón para Free, pero protegemos también el action.
+  if (!isPro(profesional)) {
+    redirect("/configuracion/plan");
+  }
   redirect(buildAuthUrl(profesional.id));
 }
 

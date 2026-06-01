@@ -50,7 +50,8 @@ export default async function PlanPage({
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Plan</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pasá a Pro para activar recordatorios automáticos por WhatsApp.
+          Pasá a Pro para cobrar online, activar recordatorios por WhatsApp y
+          ver las estadísticas de tu negocio.
         </p>
       </header>
 
@@ -98,10 +99,11 @@ export default async function PlanPage({
         <CardContent>
           <ul className="mb-6 space-y-2 text-sm">
             <Beneficio activo>Link público de reservas</Beneficio>
-            <Beneficio activo>Pagos vía Mercado Pago</Beneficio>
+            <Beneficio activo={pro}>Cobros y señas con Mercado Pago</Beneficio>
             <Beneficio activo={pro}>
               Recordatorios por WhatsApp 24h y 1h antes
             </Beneficio>
+            <Beneficio activo={pro}>Estadísticas y reportes contables</Beneficio>
             <Beneficio activo={pro}>Soporte prioritario</Beneficio>
           </ul>
 
