@@ -438,7 +438,8 @@ function WeekCalendar({
         <span className="text-xs text-muted-foreground">{rangoSemana}</span>
       </div>
 
-      <div className="grid grid-cols-7 divide-x divide-border">
+      <div className="overflow-x-auto">
+        <div className="grid min-w-160 grid-cols-7 divide-x divide-border">
         {dias.map((dia) => {
           const k = formatInTimeZone(dia, tz, "yyyy-MM-dd");
           const cantidad = turnosPorDia.get(k) ?? 0;
@@ -471,6 +472,7 @@ function WeekCalendar({
             </div>
           );
         })}
+        </div>
       </div>
 
       {sinTurnos ? (
