@@ -172,20 +172,15 @@ export function ContactForm() {
           {serverError}
         </p>
       ) : null}
-      <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-end">
-        <Button
-          type="submit"
-          size="lg"
-          disabled={isSubmitting}
-          className="w-full sm:w-auto"
-        >
-          <Send className="size-4" strokeWidth={1.75} />
-          {isSubmitting ? "Enviando..." : "Enviar mensaje"}
-        </Button>
-      </div>
-      <p className="text-center text-[11px] text-subtle">
-        Si tenes mas dudas, no dudes en escribirnos tambien a nuestras otras redes.
-      </p>
+      <Button
+        type="submit"
+        size="lg"
+        disabled={isSubmitting}
+        className="bg-gradient-brand glow-violet mt-1 w-full border-0 font-semibold text-white shadow-lg transition-transform hover:scale-[1.01] disabled:opacity-70"
+      >
+        <Send className="size-4" strokeWidth={1.75} />
+        {isSubmitting ? "Enviando..." : "Enviar mensaje"}
+      </Button>
     </form>
   );
 }

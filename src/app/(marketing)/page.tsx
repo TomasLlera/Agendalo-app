@@ -2,12 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BarChart3,
+  CalendarOff,
+  CalendarPlus,
+  CalendarX2,
   Check,
+  Clock,
   CreditCard,
+  HeartHandshake,
   Link2,
   MessageCircle,
   Minus,
+  MonitorSmartphone,
+  SlidersHorizontal,
   Sparkles,
+  StickyNote,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +25,7 @@ import { MotionReveal } from "./_components/motion-reveal";
 import { DashboardMock } from "./_components/dashboard-mock";
 import { AppCarousel } from "./_components/app-carousel";
 import { ContactForm } from "./_components/contact-form";
+import { RoiCalculator } from "./_components/roi-calculator";
 import { SocialProofPill } from "./_components/social-proof-pill";
 import { HeroCanvas } from "./_components/hero-canvas";
 import { Footer } from "@/components/shared/footer";
@@ -31,6 +41,11 @@ const formatoARS = new Intl.NumberFormat("es-AR", {
   currency: "ARS",
   maximumFractionDigits: 0,
 });
+
+/** Link de WhatsApp para los CTA de soporte (formato wa.me, sin signos). */
+const WHATSAPP_URL =
+  "https://wa.me/542236353735?text=" +
+  encodeURIComponent("Hola! Quiero saber más sobre Agendalo.");
 
 /**
  * Landing snap-scroll. Cada `<Section>` ocupa una "página" (min-h-screen +
@@ -57,6 +72,9 @@ export default function LandingPage() {
       </Section>
       <Section id="screens">
         <Screens />
+      </Section>
+      <Section id="ausencias">
+        <Ausencias />
       </Section>
       <Section id="pricing">
         <Comparativa />
@@ -267,9 +285,81 @@ function Features() {
           </article>
         ))}
       </MotionReveal>
+
+      {/* Sub-bloque "extras": jerarquía secundaria, grid compacto. */}
+      <div className="mt-14">
+        <p className="text-center text-xs font-medium uppercase tracking-[0.2em] text-secondary">
+          Y mucho más
+        </p>
+        <p className="mx-auto mt-2 max-w-xl text-center text-sm text-muted-foreground">
+          Todos los detalles que hacen la diferencia en el día a día, sin
+          configuraciones interminables.
+        </p>
+        <MotionReveal
+          className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          immediate={false}
+        >
+          {MAS_FUNCIONES.map(({ icon: Icon, titulo, cuerpo }) => (
+            <article
+              key={titulo}
+              data-reveal
+              className="flex flex-col items-center rounded-2xl border border-border bg-surface/60 p-5 text-center backdrop-blur-md transition-colors hover:border-border-strong hover:bg-surface/80"
+            >
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-secondary/20">
+                <Icon className="size-4 text-secondary" strokeWidth={1.5} />
+              </span>
+              <h4 className="mt-3 text-sm font-medium">{titulo}</h4>
+              <p className="mt-1 text-xs text-muted-foreground">{cuerpo}</p>
+            </article>
+          ))}
+        </MotionReveal>
+      </div>
     </div>
   );
 }
+
+const MAS_FUNCIONES: Feature[] = [
+  {
+    icon: SlidersHorizontal,
+    titulo: "Servicios a tu medida",
+    cuerpo: "Definí duración, precio y descripción de cada servicio.",
+  },
+  {
+    icon: Clock,
+    titulo: "Horarios flexibles",
+    cuerpo: "Configurá tus días y franjas de atención por separado.",
+  },
+  {
+    icon: CalendarOff,
+    titulo: "Vacaciones y francos",
+    cuerpo: "Bloqueá fechas puntuales y dejá de recibir reservas.",
+  },
+  {
+    icon: MonitorSmartphone,
+    titulo: "Desde cualquier dispositivo",
+    cuerpo: "Gestioná tu agenda desde la compu o el celular.",
+  },
+  {
+    icon: CalendarX2,
+    titulo: "Cancelación en un clic",
+    cuerpo: "El cliente cancela desde un link y se libera el turno.",
+  },
+  {
+    icon: Wallet,
+    titulo: "Transferencia y efectivo",
+    cuerpo: "Mostrás tu CBU/Alias o cobrás en el lugar, sin Mercado Pago.",
+  },
+  {
+    icon: CalendarPlus,
+    titulo: "Sumalo al calendario",
+    cuerpo: "Cada turno se exporta a Google, Apple u Outlook (.ics).",
+  },
+  {
+    icon: StickyNote,
+    titulo: "Notas internas",
+    cuerpo: "Anotá detalles privados en cada turno, solo para vos.",
+  },
+];
 
 function Screens() {
   return (
@@ -288,6 +378,61 @@ function Screens() {
       <div className="mt-8">
         <AppCarousel />
       </div>
+    </div>
+  );
+}
+
+const AUSENCIAS_BULLETS = [
+  "Avisos automáticos 24 horas y 1 hora antes de cada turno.",
+  "Tus clientes confirman, reprograman o cancelan con un solo toque.",
+  "Recuperás los huecos que liberan las cancelaciones a tiempo.",
+] as const;
+
+function Ausencias() {
+  return (
+    <div className="mx-auto w-full max-w-[1100px]">
+      <header className="mx-auto max-w-2xl text-center">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-secondary">
+          Recordatorios
+        </p>
+        <h2 className="mt-3 text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">
+          Menos ausencias, más ingresos
+        </h2>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Los recordatorios automáticos hacen que tus clientes lleguen o avisen
+          a tiempo. Menos huecos vacíos, más turnos que se traducen en plata.
+        </p>
+      </header>
+      <MotionReveal
+        className="mt-10 grid gap-4 lg:grid-cols-2 lg:items-stretch"
+        immediate={false}
+      >
+        <div
+          data-reveal
+          className="flex flex-col justify-center rounded-2xl border border-border bg-surface/60 p-8 backdrop-blur-md"
+        >
+          <p className="text-6xl font-bold leading-none tracking-tighter text-gradient-brand sm:text-7xl">
+            70%
+          </p>
+          <p className="mt-3 text-lg font-medium">
+            menos ausencias con recordatorios automáticos
+          </p>
+          <ul className="mt-6 flex flex-col gap-3 text-sm">
+            {AUSENCIAS_BULLETS.map((b) => (
+              <li key={b} className="flex items-start gap-2">
+                <Check
+                  className="mt-0.5 size-4 shrink-0 text-success"
+                  strokeWidth={1.5}
+                />
+                <span className="text-muted-foreground">{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div data-reveal>
+          <RoiCalculator />
+        </div>
+      </MotionReveal>
     </div>
   );
 }
@@ -468,11 +613,31 @@ function Contacto() {
           ¿Tenés dudas? Escribinos
         </h2>
         <p className="mt-3 text-sm text-muted-foreground">
-          Te respondemos por mail lo antes posible. 
+          Te respondemos por mail lo antes posible.
         </p>
       </header>
       <div className="mt-8">
         <ContactForm />
+      </div>
+      <div className="mx-auto mt-6 flex w-full max-w-[640px] flex-col gap-4 rounded-2xl border border-border bg-surface/60 p-5 text-left backdrop-blur sm:flex-row sm:items-center">
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-secondary/20">
+          <HeartHandshake className="size-4 text-secondary" strokeWidth={1.5} />
+        </span>
+        <p className="flex-1 text-sm text-muted-foreground">
+          No te dejamos solo. Atención personalizada en castellano y soporte
+          rápido cuando lo necesites.
+        </p>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={
+            <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" />
+          }
+          className="shrink-0 gap-2"
+        >
+          <MessageCircle className="size-4" strokeWidth={1.75} />
+          WhatsApp
+        </Button>
       </div>
     </div>
   );

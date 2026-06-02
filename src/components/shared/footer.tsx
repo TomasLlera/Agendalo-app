@@ -66,7 +66,7 @@ export function Footer() {
             <Logo />
             <p className="max-w-xs text-sm text-muted-foreground">
               La forma más simple de gestionar tus turnos para profesionales
-              independientes en LATAM.
+              independientes.
             </p>
             <div className="flex items-center gap-3">
               {SOCIAL.map(({ label, href, icon: Icon }) => (
