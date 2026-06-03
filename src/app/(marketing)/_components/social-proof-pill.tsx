@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Brain, Dumbbell, PenTool, Plus, Scissors } from "lucide-react";
 
 type Profesion = {
   gradient: string;
   nombre: string;
+  /** Ícono del rubro que va dentro del círculo. */
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   /** Label que aparece al lado al hacer hover/focus en este avatar. */
   label: string;
 };
@@ -13,31 +16,36 @@ const PROFESIONES: Profesion[] = [
   {
     gradient: "from-rose-400 to-rose-700",
     nombre: "Peluquería",
-    label: "Peluqueros y Barberos",
+    icon: Scissors,
+    label: "Peluqueros & Barberos",
   },
   {
     gradient: "from-emerald-400 to-emerald-700",
     nombre: "Kinesiología",
-    label: "Kinesiólogos y Fisioterapeutas",
+    icon: Dumbbell,
+    label: "Kinesiólogos & Fisio",
   },
   {
     gradient: "from-amber-400 to-amber-700",
     nombre: "Tatuajes",
+    icon: PenTool,
     label: "Tatuadores",
   },
   {
     gradient: "from-sky-400 to-sky-700",
     nombre: "Psicología",
-    label: "Psiquiatras y Psicologos",
+    icon: Brain,
+    label: "Psicólogos & Psiquiatras",
   },
   {
     gradient: "from-violet-400 to-violet-700",
     nombre: "Educación",
-    label: "Y muchos profesionales más..",
+    icon: Plus,
+    label: "Y muchos más",
   },
 ];
 
-const DEFAULT_LABEL = "Profesionales independientes en toda LATAM";
+const DEFAULT_LABEL = "La agenda de los profesionales independientes";
 
 /**
  * Pill de social proof con avatares interactivos. Cada color representa una
@@ -72,7 +80,8 @@ export function SocialProofPill() {
     return () => window.clearInterval(id);
   }, [paused]);
 
-  const label = active === null ? DEFAULT_LABEL : PROFESIONES[active].label;
+  const esDefault = active === null;
+  const label = esDefault ? DEFAULT_LABEL : PROFESIONES[active].label;
 
   return (
     <div className="flex items-center gap-3 rounded-full border border-border bg-surface/60 px-4 py-2 backdrop-blur">
@@ -87,6 +96,7 @@ export function SocialProofPill() {
         {PROFESIONES.map((p, i) => {
           const isActive = active === i;
           const isDimmed = active !== null && !isActive;
+          const Icon = p.icon;
           return (
             <button
               key={p.nombre}
@@ -101,19 +111,26 @@ export function SocialProofPill() {
                 setPaused(false);
                 setActive(null);
               }}
-              className={`relative inline-block size-6 cursor-pointer rounded-full border-2 border-surface bg-gradient-to-br transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-foreground/60 ${
+              className={`relative inline-flex size-7 cursor-pointer items-center justify-center rounded-full border-2 border-surface bg-gradient-to-br transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-foreground/60 ${
                 p.gradient
               } ${
                 isActive ? "z-10 scale-125 shadow-lg" : ""
               } ${isDimmed ? "scale-90 opacity-40" : ""}`}
-            />
+            >
+              <Icon className="size-3.5 text-white" strokeWidth={2} />
+            </button>
           );
         })}
       </div>
       <span
         // `min-w` evita que el texto al cambiar de largo desplace la layout
-        // de la pill (jitter horizontal).
-        className="min-w-[210px] text-left text-xs text-muted-foreground transition-colors duration-200 sm:min-w-[230px]"
+        // de la pill (jitter horizontal). Los rubros van en mayúsculas tipo
+        // "eyebrow"; el label por defecto (una frase) queda en caja normal.
+        className={`min-w-[210px] text-center text-xs transition-colors duration-200 sm:min-w-[230px] ${
+          esDefault
+            ? "text-muted-foreground"
+            : "font-medium uppercase tracking-wide text-foreground/90"
+        }`}
       >
         {label}
       </span>

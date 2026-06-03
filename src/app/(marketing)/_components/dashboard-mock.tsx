@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { LogoMark } from "@/components/shared/logo-mark";
 
 /**
  * Mock visual del dashboard dentro de un set de dispositivos: una pantalla
@@ -106,7 +107,7 @@ export function DashboardMock() {
             </div>
 
             {/* Bento grid. */}
-            <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-6 md:grid-rows-2">
+            <div className="grid gap-3 p-3 sm:p-5 md:grid-cols-6 md:grid-rows-2">
               {/* Próximo turno — ancho doble. */}
               <article
                 data-tile
@@ -155,7 +156,7 @@ export function DashboardMock() {
                   vs mes anterior
                 </p>
                 <svg
-                  className="mt-3 h-10 w-full"
+                  className="mt-2 h-9 w-full"
                   viewBox="0 0 200 40"
                   fill="none"
                   preserveAspectRatio="none"
@@ -200,7 +201,7 @@ export function DashboardMock() {
                     { dia: "Hoy", hora: "15:30", c: "Camila Rojas", s: "Corte y color · 60 min", e: "pago" },
                     { dia: "Mañana", hora: "10:00", c: "Pedro García", s: "Corte · 30 min", e: "ok" },
                     { dia: "Mañana", hora: "11:30", c: "Sofía Aguirre", s: "Color · 90 min", e: "pendiente" },
-                  ].map((t) => (
+                  ].slice(0, 2).map((t) => (
                     <div
                       key={t.hora}
                       className="flex items-center gap-3 rounded-lg border border-border/70 bg-surface px-3 py-2"
@@ -306,9 +307,7 @@ function PhoneMock() {
 
         {/* App header. */}
         <div className="flex items-center gap-1.5 px-3 pt-1">
-          <span className="bg-gradient-brand inline-flex size-4 items-center justify-center rounded-md text-[8px] font-bold text-white">
-            a
-          </span>
+          <LogoMark className="size-4" />
           <span className="text-[10px] font-semibold">Hola, Mara</span>
           <span className="ml-auto inline-flex size-4 items-center justify-center rounded-full bg-surface-elevated text-[7px] font-medium">
             M

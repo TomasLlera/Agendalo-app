@@ -2,21 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BarChart3,
-  CalendarOff,
-  CalendarPlus,
-  CalendarX2,
   Check,
-  Clock,
   CreditCard,
   HeartHandshake,
   Link2,
   MessageCircle,
   Minus,
-  MonitorSmartphone,
-  SlidersHorizontal,
   Sparkles,
-  StickyNote,
-  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,13 +17,18 @@ import { MotionReveal } from "./_components/motion-reveal";
 import { DashboardMock } from "./_components/dashboard-mock";
 import { AppCarousel } from "./_components/app-carousel";
 import { ContactForm } from "./_components/contact-form";
+import { ExtrasDial } from "./_components/extras-dial";
 import { RoiCalculator } from "./_components/roi-calculator";
 import { SocialProofPill } from "./_components/social-proof-pill";
 import { HeroCanvas } from "./_components/hero-canvas";
 import { Footer } from "@/components/shared/footer";
 
 export const metadata: Metadata = {
-  title: "Agendalo — La forma más simple de gestionar tus turnos",
+  // `absolute` evita que el template del layout raíz ("%s · Agendalo") agregue
+  // un segundo "Agendalo" al final del título.
+  title: {
+    absolute: "Agendalo — La forma más simple de gestionar tus turnos",
+  },
   description:
     "SaaS de agenda para profesionales independientes. Reservas online, recordatorios por WhatsApp y cobros con Mercado Pago.",
 };
@@ -69,6 +66,9 @@ export default function LandingPage() {
       </Section>
       <Section id="features">
         <Features />
+      </Section>
+      <Section id="mas-funciones">
+        <MasFunciones />
       </Section>
       <Section id="screens">
         <Screens />
@@ -198,7 +198,7 @@ function DashboardSection() {
           Tus próximos turnos, los cobros del mes y la semana completa, siempre a un vistazo.
         </p>
       </header>
-      <div className="mt-8">
+      <div className="mt-6">
         <DashboardMock />
       </div>
     </div>
@@ -264,102 +264,56 @@ function Features() {
           <article
             key={titulo}
             data-reveal
-            className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 backdrop-blur-md transition-all hover:border-border-strong hover:bg-surface/80"
+            className="group relative flex flex-col items-center overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 text-center backdrop-blur-md transition-all hover:border-border-strong hover:bg-surface/80"
           >
             <div
               aria-hidden
               className="absolute inset-0 -z-10 bg-linear-to-br from-secondary/0 via-secondary/0 to-secondary/0 opacity-0 transition-opacity duration-500 group-hover:from-secondary/10 group-hover:via-transparent group-hover:to-cyan-500/10 group-hover:opacity-100"
             />
-            <div className="flex items-center gap-3">
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-secondary/20 transition-all group-hover:ring-secondary/40">
-                <Icon className="size-4 text-secondary" strokeWidth={1.5} />
-              </span>
-              {badge ? (
-                <Badge variant="secondary" className="ml-auto">
-                  {badge}
-                </Badge>
-              ) : null}
-            </div>
+            {badge ? (
+              <Badge variant="secondary" className="absolute right-4 top-4">
+                {badge}
+              </Badge>
+            ) : null}
+            <span className="inline-flex size-10 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-secondary/20 transition-all group-hover:ring-secondary/40">
+              <Icon className="size-4 text-secondary" strokeWidth={1.5} />
+            </span>
             <h3 className="mt-4 text-base font-medium sm:min-h-12">{titulo}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{cuerpo}</p>
+            {/* Descripción: siempre visible en mobile; en desktop se revela
+                al hover (grid-rows 0fr→1fr para una expansión suave). */}
+            <div className="grid grid-rows-[1fr] opacity-100 transition-all duration-300 lg:grid-rows-[0fr] lg:opacity-0 lg:group-hover:grid-rows-[1fr] lg:group-hover:opacity-100">
+              <p className="min-h-0 overflow-hidden pt-1 text-sm text-muted-foreground">
+                {cuerpo}
+              </p>
+            </div>
           </article>
         ))}
       </MotionReveal>
-
-      {/* Sub-bloque "extras": jerarquía secundaria, grid compacto. */}
-      <div className="mt-14">
-        <p className="text-center text-xs font-medium uppercase tracking-[0.2em] text-secondary">
-          Y mucho más
-        </p>
-        <p className="mx-auto mt-2 max-w-xl text-center text-sm text-muted-foreground">
-          Todos los detalles que hacen la diferencia en el día a día, sin
-          configuraciones interminables.
-        </p>
-        <MotionReveal
-          className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-          immediate={false}
-        >
-          {MAS_FUNCIONES.map(({ icon: Icon, titulo, cuerpo }) => (
-            <article
-              key={titulo}
-              data-reveal
-              className="flex flex-col items-center rounded-2xl border border-border bg-surface/60 p-5 text-center backdrop-blur-md transition-colors hover:border-border-strong hover:bg-surface/80"
-            >
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-secondary/20">
-                <Icon className="size-4 text-secondary" strokeWidth={1.5} />
-              </span>
-              <h4 className="mt-3 text-sm font-medium">{titulo}</h4>
-              <p className="mt-1 text-xs text-muted-foreground">{cuerpo}</p>
-            </article>
-          ))}
-        </MotionReveal>
-      </div>
     </div>
   );
 }
 
-const MAS_FUNCIONES: Feature[] = [
-  {
-    icon: SlidersHorizontal,
-    titulo: "Servicios a tu medida",
-    cuerpo: "Definí duración, precio y descripción de cada servicio.",
-  },
-  {
-    icon: Clock,
-    titulo: "Horarios flexibles",
-    cuerpo: "Configurá tus días y franjas de atención por separado.",
-  },
-  {
-    icon: CalendarOff,
-    titulo: "Vacaciones y francos",
-    cuerpo: "Bloqueá fechas puntuales y dejá de recibir reservas.",
-  },
-  {
-    icon: MonitorSmartphone,
-    titulo: "Desde cualquier dispositivo",
-    cuerpo: "Gestioná tu agenda desde la compu o el celular.",
-  },
-  {
-    icon: CalendarX2,
-    titulo: "Cancelación en un clic",
-    cuerpo: "El cliente cancela desde un link y se libera el turno.",
-  },
-  {
-    icon: Wallet,
-    titulo: "Transferencia y efectivo",
-    cuerpo: "Mostrás tu CBU/Alias o cobrás en el lugar, sin Mercado Pago.",
-  },
-  {
-    icon: CalendarPlus,
-    titulo: "Sumalo al calendario",
-    cuerpo: "Cada turno se exporta a Google, Apple u Outlook (.ics).",
-  },
-  {
-    icon: StickyNote,
-    titulo: "Notas internas",
-    cuerpo: "Anotá detalles privados en cada turno, solo para vos.",
-  },
-];
+function MasFunciones() {
+  return (
+    <div className="mx-auto w-full max-w-[1100px]">
+      <header className="mx-auto max-w-2xl text-center">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-secondary">
+          Y mucho más
+        </p>
+        <h2 className="mt-3 text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">
+          Todo lo que necesita tu agenda
+        </h2>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Todos los detalles que hacen la diferencia en el día a día, sin
+          configuraciones interminables.
+        </p>
+      </header>
+      <div className="mt-10">
+        <ExtrasDial />
+      </div>
+    </div>
+  );
+}
 
 function Screens() {
   return (
@@ -550,8 +504,26 @@ function Comparativa() {
 
 const FAQ_ITEMS = [
   {
+    q: "¿Cuánto cuesta Agendalo?",
+    a: `El plan Free es gratis para siempre. El plan Pro cuesta ${formatoARS.format(
+      PRECIO_PRO_ARS,
+    )} por mes e incluye recordatorios automáticos, cobros online y estadísticas. Sin contrato ni permanencia: lo activás solo cuando lo necesitás.`,
+  },
+  {
+    q: "¿Qué diferencia hay entre Free y Pro?",
+    a: "Con Free tenés tu agenda online: página pública con tu link, servicios y horarios ilimitados, reservas sin registro para el cliente y bloqueos de agenda. Pro suma lo que automatiza y hace crecer tu negocio: recordatorios por WhatsApp, cobros con Mercado Pago y estadísticas.",
+  },
+  {
     q: "¿Necesito tarjeta de crédito para empezar?",
     a: "No. El plan Free es gratis para siempre y no requiere tarjeta. Más adelante, si querés activar WhatsApp o cobros online, podés suscribirte al plan Pro desde el panel.",
+  },
+  {
+    q: "¿Para qué rubros sirve Agendalo?",
+    a: "Para cualquier profesional que trabaje con turnos: peluquerías y barberías, kinesiología, psicología, estética, tatuajes, nutrición y muchos más. Si das turnos, te sirve.",
+  },
+  {
+    q: "¿Cómo empiezo?",
+    a: "Te registrás gratis, cargás tus servicios y tus horarios de atención, y compartís tu link de reservas. En menos de 5 minutos ya podés recibir tu primer turno.",
   },
   {
     q: "¿Mis clientes tienen que crear una cuenta?",
@@ -562,8 +534,20 @@ const FAQ_ITEMS = [
     a: "Conectás tu cuenta de Mercado Pago una sola vez. Si un servicio requiere pago, el cliente abona al reservar y el dinero se acredita directamente en tu cuenta. Agendalo nunca toca tu plata.",
   },
   {
+    q: "¿Puedo cobrar por transferencia o efectivo?",
+    a: "Sí. Por cada servicio elegís el método: Mercado Pago, transferencia (mostrás tu CBU/Alias) o efectivo en el lugar. Vos decidís si pedís una seña, el total o si el turno es sin pago.",
+  },
+  {
     q: "¿Los recordatorios por WhatsApp tienen costo extra?",
     a: "No. Están incluidos en el plan Pro y se envían automáticamente 24 horas y 1 hora antes del turno.",
+  },
+  {
+    q: "¿Puedo bloquear vacaciones o francos?",
+    a: "Sí. Bloqueás las fechas que quieras —vacaciones, feriados o un franco puntual— y durante ese período no vas a recibir reservas en esos días.",
+  },
+  {
+    q: "¿Necesito instalar algo? ¿Funciona en el celular?",
+    a: "No hace falta instalar nada. Agendalo funciona desde el navegador, tanto en la computadora como en el celular, para vos y para tus clientes.",
   },
   {
     q: "¿Puedo cancelar cuando quiera?",
@@ -572,8 +556,12 @@ const FAQ_ITEMS = [
 ] as const;
 
 function FAQ() {
+  // Dos columnas independientes en desktop: al abrir una pregunta, solo se
+  // empujan las de abajo de su propia columna (no descoloca la otra).
+  const mitad = Math.ceil(FAQ_ITEMS.length / 2);
+  const columnas = [FAQ_ITEMS.slice(0, mitad), FAQ_ITEMS.slice(mitad)];
   return (
-    <div className="mx-auto w-full max-w-[760px]">
+    <div className="mx-auto w-full max-w-[920px]">
       <header className="text-center">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-secondary">
           FAQ
@@ -582,20 +570,24 @@ function FAQ() {
           Preguntas frecuentes
         </h2>
       </header>
-      <div className="mt-8 flex flex-col gap-3">
-        {FAQ_ITEMS.map((item) => (
-          <details
-            key={item.q}
-            className="group rounded-xl border border-border bg-surface/80 px-5 py-4 backdrop-blur [&_summary::-webkit-details-marker]:hidden"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium">
-              {item.q}
-              <span className="text-muted-foreground transition-transform group-open:rotate-45">
-                +
-              </span>
-            </summary>
-            <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
-          </details>
+      <div className="mt-8 grid items-start gap-3 lg:grid-cols-2">
+        {columnas.map((col, i) => (
+          <div key={i} className="flex flex-col gap-3">
+            {col.map((item) => (
+              <details
+                key={item.q}
+                className="group rounded-xl border border-border bg-surface/80 px-5 py-4 backdrop-blur [&_summary::-webkit-details-marker]:hidden"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium">
+                  {item.q}
+                  <span className="text-muted-foreground transition-transform group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
+              </details>
+            ))}
+          </div>
         ))}
       </div>
     </div>

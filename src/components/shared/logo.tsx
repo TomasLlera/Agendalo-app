@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "./logo-mark";
 
 /** Wordmark de Agendalo. Por default linkea a la landing. */
 export function Logo({
@@ -18,7 +18,7 @@ export function Logo({
         className,
       )}
     >
-      <CalendarCheck className="size-5 text-primary" strokeWidth={1.5} />
+      <LogoMark className="size-6" />
       <span className="text-base">Agendalo</span>
     </Link>
   );
