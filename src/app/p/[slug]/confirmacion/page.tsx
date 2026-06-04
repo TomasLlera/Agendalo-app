@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { isPro } from "@/lib/plan";
 import { Button } from "@/components/ui/button";
 import { MpWalletBrick } from "./mp-wallet-brick";
+import { EstadoPoller } from "./estado-poller";
 
 export const metadata: Metadata = {
   title: "Reserva — Agendalo",
@@ -161,6 +162,9 @@ export default async function ConfirmacionPage({
               Pagar en Mercado Pago
             </a>
           ) : null}
+          {/* Detecta la confirmación del webhook y refresca a la pantalla de
+              éxito sin que el cliente tenga que recargar. */}
+          <EstadoPoller turnoId={turno.id} />
         </>
       ) : null}
 
