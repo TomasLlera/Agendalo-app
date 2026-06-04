@@ -22,6 +22,7 @@ import { TIMEZONES_AR } from "@/lib/timezones";
 import { cn } from "@/lib/utils";
 import { perfilSchema, type PerfilFormValues } from "./schema";
 import { updatePerfil } from "./actions";
+import { AvatarCropper } from "./avatar-cropper";
 
 type PerfilFormProps = {
   perfil: {
@@ -63,6 +64,9 @@ export function PerfilForm({ perfil, appUrl }: PerfilFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(perfil.fotoUrl);
+  // Imagen original elegida (sin recortar) para poder reabrir el editor.
+  const [originalSrc, setOriginalSrc] = useState<string | null>(null);
+  const [editorAbierto, setEditorAbierto] = useState(false);
 
   const slug = useWatch({ control, name: "slug" }) ?? "";
   const descripcion = useWatch({ control, name: "descripcion" }) ?? "";
@@ -70,12 +74,23 @@ export function PerfilForm({ perfil, appUrl }: PerfilFormProps) {
 
   function onFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    // Permite volver a elegir el mismo archivo más tarde.
+    e.target.value = "";
     if (!file) return;
+    setOriginalSrc((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setEditorAbierto(true);
+  }
+
+  function onRecorteAplicado(file: File) {
     setFotoFile(file);
     setFotoPreview((prev) => {
       if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
     });
+    setEditorAbierto(false);
   }
 
   function onSubmit(values: PerfilFormValues) {
@@ -122,15 +137,27 @@ export function PerfilForm({ perfil, appUrl }: PerfilFormProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Camera strokeWidth={1.5} />
-                Cambiar foto
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Camera strokeWidth={1.5} />
+                  Cambiar foto
+                </Button>
+                {originalSrc ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditorAbierto(true)}
+                  >
+                    Acomodar
+                  </Button>
+                ) : null}
+              </div>
               <p className="text-xs text-subtle">
                 JPG, PNG o WebP. Máximo 2 MB.
               </p>
@@ -237,6 +264,14 @@ export function PerfilForm({ perfil, appUrl }: PerfilFormProps) {
           </Button>
         </CardFooter>
       </Card>
+
+      {editorAbierto && originalSrc ? (
+        <AvatarCropper
+          src={originalSrc}
+          onApply={onRecorteAplicado}
+          onCancel={() => setEditorAbierto(false)}
+        />
+      ) : null}
     </form>
   );
 }

@@ -1,21 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
 import {
+  BarChart3,
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
+  CalendarX2,
   Clock,
   CreditCard,
   Globe,
-  LayoutDashboard,
+  Landmark,
+  Phone,
+  TrendingUp,
   User2,
+  Wallet,
 } from "lucide-react";
 
 type Mock = {
   id: string;
   titulo: string;
+  /** URL ilustrativa que se muestra en el chrome del navegador. */
+  url: string;
   bajada: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   render: React.ReactNode;
@@ -23,39 +28,52 @@ type Mock = {
 
 const MOCKS: Mock[] = [
   {
-    id: "dashboard",
-    titulo: "Dashboard",
-    bajada: "Visualizá tus métricas y agenda al instante.",
-    icon: LayoutDashboard,
-    render: <MockDashboard />,
-  },
-  {
     id: "agenda",
-    titulo: "Agenda del día",
-    bajada: "Filtrá, organizá y gestioná cada turno en segundos.",
+    titulo: "Agenda",
+    url: "agendalo.app/dashboard",
+    bajada: "Tus próximos turnos agrupados por día, con su estado de pago.",
     icon: CalendarDays,
     render: <MockAgenda />,
   },
   {
     id: "publica",
-    titulo: "Tu página pública",
-    bajada: "Tu link de reservas, listo para compartir.",
+    titulo: "Página pública",
+    url: "agendalo.app/p/mara",
+    bajada: "Tu link de reservas, listo para compartir. Sin que el cliente se registre.",
     icon: Globe,
     render: <MockPublica />,
   },
   {
+    id: "estadisticas",
+    titulo: "Estadísticas",
+    url: "agendalo.app/estadisticas",
+    bajada: "Tu panel contable: ingresos por mes, por servicio y por día.",
+    icon: BarChart3,
+    render: <MockEstadisticas />,
+  },
+  {
+    id: "cobros",
+    titulo: "Cobros",
+    url: "agendalo.app/configuracion/pagos",
+    bajada: "Cobrá con Mercado Pago, transferencia o efectivo. Vos elegís.",
+    icon: CreditCard,
+    render: <MockPagos />,
+  },
+  {
     id: "perfil",
-    titulo: "Perfil y servicios",
+    titulo: "Perfil",
+    url: "agendalo.app/perfil",
     bajada: "Personalizá tu perfil, tu link y tus servicios.",
     icon: User2,
     render: <MockPerfil />,
   },
   {
-    id: "pagos",
-    titulo: "Cobros con Mercado Pago",
-    bajada: "Conectá tu cuenta y empezá a cobrar al instante.",
-    icon: CreditCard,
-    render: <MockPagos />,
+    id: "cancelados",
+    titulo: "Cancelados",
+    url: "agendalo.app/cancelados",
+    bajada: "El historial de turnos cancelados, con el contacto a mano.",
+    icon: CalendarX2,
+    render: <MockCancelados />,
   },
 ];
 
@@ -64,15 +82,13 @@ export function AppCarousel() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const pausedRef = useRef(false);
 
-  const goTo = useCallback((i: number) => {
-    setIndex(((i % MOCKS.length) + MOCKS.length) % MOCKS.length);
-  }, []);
-  const next = useCallback(() => goTo(index + 1), [index, goTo]);
-  const prev = useCallback(() => goTo(index - 1), [index, goTo]);
-
-  // Autoplay con pausa al hover.
+  // Autoplay: avanza cada 5s. Se pausa al hover/focus (pausedRef) y se
+  // desactiva si el usuario prefiere menos movimiento.
   useEffect(() => {
-    if (pausedRef.current) return;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduceMotion) return;
     const id = window.setInterval(() => {
       if (!pausedRef.current) {
         setIndex((i) => (i + 1) % MOCKS.length);
@@ -81,7 +97,7 @@ export function AppCarousel() {
     return () => window.clearInterval(id);
   }, []);
 
-  // Animar el slide actual al cambiar.
+  // Animar el slide actual al cambiar de tab.
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -98,42 +114,73 @@ export function AppCarousel() {
     animate(active, {
       opacity: [0, 1],
       translateY: [10, 0],
-      duration: 500,
+      duration: 450,
       ease: "outExpo",
     });
   }, [index]);
+
+  const activo = MOCKS[index];
 
   return (
     <div
       className="mx-auto w-full max-w-[1100px]"
       onMouseEnter={() => (pausedRef.current = true)}
       onMouseLeave={() => (pausedRef.current = false)}
+      onFocusCapture={() => (pausedRef.current = true)}
+      onBlurCapture={() => (pausedRef.current = false)}
     >
+      {/* Tabs. */}
+      <div
+        role="tablist"
+        aria-label="Pantallas de Agendalo"
+        className="-mx-6 mb-4 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:justify-center sm:px-0"
+      >
+        {MOCKS.map((m, i) => {
+          const Icon = m.icon;
+          const isActive = i === index;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setIndex(i)}
+              className={`inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? "border-transparent bg-foreground text-background"
+                  : "border-border bg-surface/60 text-muted-foreground hover:border-border-strong hover:text-foreground"
+              }`}
+            >
+              <Icon className="size-4" strokeWidth={1.75} />
+              {m.titulo}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Marco de navegador. */}
       <div
         ref={stageRef}
         className="relative overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
       >
-        {/* Chrome con nombre del slide. */}
         <div className="flex items-center gap-2 border-b border-border bg-surface-elevated px-4 py-2.5">
           <div className="flex gap-1.5">
             <span className="size-2.5 rounded-full bg-border-strong" />
             <span className="size-2.5 rounded-full bg-border-strong" />
             <span className="size-2.5 rounded-full bg-border-strong" />
           </div>
-          <span className="ml-2 text-xs text-subtle">
-            agendalo.app/{MOCKS[index].id}
-          </span>
-          <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            {(() => {
-              const Icon = MOCKS[index].icon;
-              return <Icon className="size-3" strokeWidth={1.75} />;
-            })()}
-            {MOCKS[index].titulo}
+          <span className="ml-2 truncate text-xs text-subtle">{activo.url}</span>
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+            <activo.icon className="size-3" strokeWidth={1.75} />
+            {activo.titulo}
           </span>
         </div>
 
         {/* Stage — sólo se monta el slide activo. */}
-        <div className="relative min-h-[420px] p-4 sm:p-6">
+        <div
+          role="tabpanel"
+          className="relative min-h-[420px] p-4 sm:p-6"
+        >
           {MOCKS.map((m, i) => (
             <div
               key={m.id}
@@ -144,157 +191,68 @@ export function AppCarousel() {
             </div>
           ))}
         </div>
-
-        {/* Controles. */}
-        <button
-          type="button"
-          onClick={prev}
-          aria-label="Anterior"
-          className="absolute left-3 top-1/2 inline-flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-surface/80 backdrop-blur transition-colors hover:bg-surface-elevated"
-        >
-          <ChevronLeft className="size-4" strokeWidth={1.5} />
-        </button>
-        <button
-          type="button"
-          onClick={next}
-          aria-label="Siguiente"
-          className="absolute right-3 top-1/2 inline-flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-surface/80 backdrop-blur transition-colors hover:bg-surface-elevated"
-        >
-          <ChevronRight className="size-4" strokeWidth={1.5} />
-        </button>
       </div>
 
-      {/* Indicators + caption. */}
-      <div className="mt-5 flex flex-col items-center gap-3">
-        <p className="text-center text-sm text-muted-foreground">
-          {MOCKS[index].bajada}
-        </p>
-        <div className="flex items-center gap-2">
-          {MOCKS.map((m, i) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => goTo(i)}
-              aria-label={`Ver ${m.titulo}`}
-              aria-current={i === index ? "true" : undefined}
-              className={`h-1.5 cursor-pointer rounded-full transition-all duration-300 ${
-                i === index
-                  ? "w-8 bg-foreground"
-                  : "w-2 bg-border-strong hover:bg-muted-foreground"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
+      {/* Caption. */}
+      <p className="mt-5 text-center text-sm text-muted-foreground">
+        {activo.bajada}
+      </p>
     </div>
   );
 }
 
 /* ------------------------------- Mocks --------------------------------- */
 
-function MockDashboard() {
-  return (
-    <div className="grid gap-3 md:grid-cols-3">
-      <div className="rounded-xl border border-border bg-background p-5 md:col-span-2">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Próximo turno
-        </p>
-        <p className="mt-3 text-xl font-semibold">Lucía Méndez</p>
-        <p className="text-xs text-muted-foreground">
-          Masaje descontracturante · 50 min · Hoy 17:00
-        </p>
-        <div className="mt-4 flex gap-2">
-          <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] text-success">
-            Pagado
-          </span>
-          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
-            Recordatorio enviado
-          </span>
-        </div>
-      </div>
-      <div className="rounded-xl border border-border bg-background p-5">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Ingresos
-        </p>
-        <p className="mt-3 text-xl font-semibold">$ 184.500</p>
-        <p className="text-[10px] text-success">+24,6% mes anterior</p>
-      </div>
-      <div className="rounded-xl border border-border bg-background p-5 md:col-span-3">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Semana
-        </p>
-        <div className="mt-3 grid grid-cols-7 gap-2">
-          {[1, 4, 0, 3, 2, 0, 2].map((n, i) => (
-            <div
-              key={i}
-              className="flex flex-col items-center gap-1"
-              title={`${n} turnos`}
-            >
-              <span className="text-[9px] text-muted-foreground">
-                {["L", "M", "M", "J", "V", "S", "D"][i]}
-              </span>
-              <span
-                className="block h-6 w-full rounded-sm"
-                style={{
-                  background:
-                    n === 0
-                      ? "var(--color-surface-elevated)"
-                      : `rgba(16, 185, 129, ${0.18 + (n / 4) * 0.6})`,
-                }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MockAgenda() {
-  const items = [
-    { hora: "09:00", cliente: "Pedro García", svc: "Corte", estado: "ok" },
+  const grupos = [
     {
-      hora: "10:30",
-      cliente: "Sofía Aguirre",
-      svc: "Color · 90 min",
-      estado: "pago",
+      dia: "Hoy",
+      items: [
+        { hora: "09:00", cliente: "Pedro García", svc: "Corte · 30 min", estado: "ok" },
+        { hora: "10:30", cliente: "Sofía Aguirre", svc: "Color · 90 min", estado: "pago" },
+        { hora: "12:00", cliente: "Tomás Ríos", svc: "Corte + barba · 45 min", estado: "ok" },
+      ],
     },
-    { hora: "12:00", cliente: "Tomás Ríos", svc: "Corte + barba", estado: "ok" },
     {
-      hora: "15:00",
-      cliente: "Camila Rojas",
-      svc: "Color · 60 min",
-      estado: "pendiente",
+      dia: "Mañana",
+      items: [
+        { hora: "15:00", cliente: "Camila Rojas", svc: "Color · 60 min", estado: "pendiente" },
+        { hora: "16:30", cliente: "Mariano D.", svc: "Brushing · 45 min", estado: "ok" },
+      ],
     },
-    { hora: "16:30", cliente: "Mariano D.", svc: "Brushing", estado: "ok" },
   ];
   return (
-    <div className="space-y-2">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
-          Hoy · Lun 26 May
-        </span>
-        <span className="text-xs text-muted-foreground">5 turnos</span>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium">Próximos turnos</span>
+        <span className="text-[11px] text-muted-foreground">5 turnos</span>
         <span className="ml-auto rounded-full border border-border px-2.5 py-1 text-[10px] text-muted-foreground">
           Todos los servicios ▾
         </span>
       </div>
-      {items.map((t) => (
-        <div
-          key={t.hora}
-          className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3"
-        >
-          <div className="flex w-14 items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="size-3" strokeWidth={1.75} />
-            {t.hora}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{t.cliente}</p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {t.svc}
-            </p>
-          </div>
-          <EstadoPill estado={t.estado} />
+      {grupos.map((g) => (
+        <div key={g.dia} className="space-y-2">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {g.dia}
+          </p>
+          {g.items.map((t) => (
+            <div
+              key={t.hora}
+              className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3"
+            >
+              <div className="flex w-14 items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="size-3" strokeWidth={1.75} />
+                {t.hora}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{t.cliente}</p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {t.svc}
+                </p>
+              </div>
+              <EstadoPill estado={t.estado} />
+            </div>
+          ))}
         </div>
       ))}
     </div>
@@ -304,20 +262,20 @@ function MockAgenda() {
 function EstadoPill({ estado }: { estado: string }) {
   if (estado === "pago") {
     return (
-      <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] text-success">
+      <span className="shrink-0 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] text-success">
         Pagado
       </span>
     );
   }
   if (estado === "pendiente") {
     return (
-      <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] text-warning">
+      <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] text-warning">
         Pendiente pago
       </span>
     );
   }
   return (
-    <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
       Confirmado
     </span>
   );
@@ -331,9 +289,7 @@ function MockPublica() {
           M
         </span>
         <p className="text-sm font-medium">Estudio Mara</p>
-        <p className="text-[10px] text-muted-foreground">
-          agendalo.app/p/mara
-        </p>
+        <p className="text-[10px] text-muted-foreground">agendalo.app/p/mara</p>
       </div>
       <div className="space-y-3">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -365,6 +321,55 @@ function MockPublica() {
   );
 }
 
+function MockEstadisticas() {
+  const kpis = [
+    { icon: Wallet, t: "Ingresos del mes", v: "$ 248.500", d: "+18,2%", up: true },
+    { icon: CalendarDays, t: "Turnos del mes", v: "32", d: "+12,5%", up: true },
+    { icon: TrendingUp, t: "Ticket promedio", v: "$ 7.765", d: null, up: true },
+  ];
+  const barras = [40, 55, 48, 70, 60, 82, 68, 90, 72, 100, 84, 95];
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {kpis.map(({ icon: Icon, t, v, d, up }) => (
+          <div key={t} className="rounded-xl border border-border bg-background p-4">
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <Icon className="size-3" strokeWidth={1.5} />
+              {t}
+            </div>
+            <p className="mt-2 text-lg font-semibold tracking-tight">{v}</p>
+            {d ? (
+              <p
+                className={`mt-1 text-[10px] ${up ? "text-success" : "text-destructive"}`}
+              >
+                {d} vs mes anterior
+              </p>
+            ) : (
+              <p className="mt-1 text-[10px] text-subtle">Promedio por turno</p>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-border bg-background p-4">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-medium">Ingresos por mes</p>
+          <span className="text-[10px] text-muted-foreground">12 meses</span>
+        </div>
+        <div className="mt-4 flex h-24 items-end gap-1.5">
+          {barras.map((h, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t bg-secondary/60"
+              style={{ height: `${h}%` }}
+              title={`${h}%`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MockPerfil() {
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -388,19 +393,15 @@ function MockPerfil() {
           </span>
         </div>
         <div className="mt-3 space-y-2 text-sm">
-          {["Corte · 30 min", "Color · 90 min", "Brushing · 45 min"].map(
-            (s) => (
-              <div
-                key={s}
-                className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2"
-              >
-                <span className="text-xs">{s}</span>
-                <span className="text-[10px] text-muted-foreground">
-                  Activo
-                </span>
-              </div>
-            ),
-          )}
+          {["Corte · 30 min", "Color · 90 min", "Brushing · 45 min"].map((s) => (
+            <div
+              key={s}
+              className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2"
+            >
+              <span className="text-xs">{s}</span>
+              <span className="text-[10px] text-muted-foreground">Activo</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -421,27 +422,61 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function MockPagos() {
+  const metodos = [
+    {
+      icon: CreditCard,
+      color: "#00B1EA",
+      nombre: "Mercado Pago",
+      detalle: "Cuenta conectada · cae directo en tu cuenta",
+      activo: true,
+    },
+    {
+      icon: Landmark,
+      color: "#10B981",
+      nombre: "Transferencia",
+      detalle: "Mostrás tu CBU/Alias al reservar",
+      activo: true,
+    },
+    {
+      icon: Wallet,
+      color: "#A78BFA",
+      nombre: "Efectivo",
+      detalle: "El cliente paga en el lugar",
+      activo: true,
+    },
+  ];
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="rounded-xl border border-border bg-background p-5">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-[#00B1EA]/15">
-            <CreditCard className="size-4 text-[#00B1EA]" strokeWidth={1.5} />
-          </span>
-          <div>
-            <p className="text-sm font-medium">Mercado Pago</p>
-            <p className="text-[11px] text-muted-foreground">
-              Cuenta conectada
-            </p>
-          </div>
-          <span className="ml-auto rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] text-success">
-            Activo
-          </span>
-        </div>
-        <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-          <p>· La plata cae directo en tu cuenta de MP.</p>
-          <p>· Agendalo no toca tu dinero.</p>
-          <p>· Pedí seña o cobrá el 100% por servicio.</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          Cómo cobrás
+        </p>
+        <div className="mt-3 space-y-2">
+          {metodos.map((m) => {
+            const Icon = m.icon;
+            return (
+              <div
+                key={m.nombre}
+                className="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5"
+              >
+                <span
+                  className="inline-flex size-8 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: `${m.color}26` }}
+                >
+                  <Icon className="size-4" strokeWidth={1.5} style={{ color: m.color }} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium">{m.nombre}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {m.detalle}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] text-success">
+                  Activo
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
       <div className="rounded-xl border border-border bg-background p-5">
@@ -467,6 +502,54 @@ function MockPagos() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function MockCancelados() {
+  const turnos = [
+    { fecha: "Vie 23 de may", hora: "11:00", cliente: "Lucía Méndez", svc: "Corte", tel: "+54 11 5555 1234", futuro: false },
+    { fecha: "Lun 26 de may", hora: "16:30", cliente: "Tomás Ríos", svc: "Color · 90 min", tel: "+54 11 5555 8090", futuro: false },
+    { fecha: "Jue 29 de may", hora: "09:30", cliente: "Sofía Aguirre", svc: "Brushing", tel: "+54 11 5555 4477", futuro: true },
+  ];
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Mayo 2026
+      </p>
+      <ul className="overflow-hidden rounded-xl border border-border bg-background">
+        {turnos.map((t, i) => (
+          <li
+            key={t.cliente}
+            className={`flex items-center gap-4 px-4 py-3 ${i !== 0 ? "border-t border-border" : ""}`}
+          >
+            <div className="flex w-24 shrink-0 flex-col">
+              <span className="text-xs font-medium text-muted-foreground line-through">
+                {t.fecha}
+              </span>
+              <span className="text-[10px] text-subtle">{t.hora} h</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <User2 className="size-3.5 text-muted-foreground" strokeWidth={1.5} />
+                <span className="truncate">{t.cliente}</span>
+              </span>
+              <div className="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                <span className="truncate">{t.svc}</span>
+                <span className="flex items-center gap-1">
+                  <Phone className="size-3" strokeWidth={1.5} />
+                  {t.tel}
+                </span>
+              </div>
+            </div>
+            {t.futuro ? (
+              <span className="ml-auto shrink-0 rounded-md border border-amber-500/40 px-2 py-0.5 text-[10px] text-amber-500">
+                Era a futuro
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

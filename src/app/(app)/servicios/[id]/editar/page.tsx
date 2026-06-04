@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getCurrentProfesional } from "@/lib/auth";
+import { isPro } from "@/lib/plan";
 import { prisma } from "@/lib/db";
 import { ServicioForm } from "../../servicio-form";
 
@@ -45,6 +46,7 @@ export default async function EditarServicioPage({
       <div className="mt-8">
         <ServicioForm
           mode="editar"
+          esPro={isPro(profesional)}
           servicio={{
             id: servicio.id,
             nombre: servicio.nombre,

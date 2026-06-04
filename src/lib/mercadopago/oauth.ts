@@ -32,6 +32,10 @@ export type TokenOAuth = {
   access_token: string;
   refresh_token?: string;
   user_id: number | string;
+  // MP devuelve `public_key` en el response del code exchange (formato
+  // `APP_USR-...`). La necesita el Wallet Brick para inicializar el SDK
+  // del lado del cliente apuntando a la cuenta del profesional.
+  public_key?: string;
 };
 
 /**

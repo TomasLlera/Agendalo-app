@@ -1,7 +1,9 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { addMinutes } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { prisma } from "@/lib/db";
+import { isPro } from "@/lib/plan";
 import { generateAvailableSlots } from "@/lib/booking/slots";
 import { reservaSchema } from "@/lib/booking/validate";
 import { crearPreferenceTurno } from "@/lib/mercadopago/payments";
@@ -33,6 +35,9 @@ export async function POST(req: NextRequest) {
       slug: true,
       timezone: true,
       mpAccessToken: true,
+      plan: true,
+      planExpiresAt: true,
+      email: true,
     },
   });
   if (!profesional) {
@@ -85,6 +90,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Token público para el link de cancelación en el email. 16 bytes = 32 hex
+  // chars: espacio de búsqueda inabarcable por fuerza bruta y único por turno.
+  const cancelToken = randomBytes(16).toString("hex");
+
+  // Cobrar con Mercado Pago es exclusivo de Pro. Si un servicio quedó marcado
+  // como MERCADOPAGO pero el profesional es Free, no hay forma de cobrar online
+  // → el turno se confirma directo en vez de quedar trabado en PENDIENTE_PAGO.
+  const esPro = isPro(profesional);
+  const mpBloqueadoFree =
+    servicio.requierePago && servicio.metodoPago === "MERCADOPAGO" && !esPro;
+  const estadoInicial =
+    servicio.requierePago && !mpBloqueadoFree ? "PENDIENTE_PAGO" : "CONFIRMADO";
+
   // Creación con guarda de concurrencia: si aparece un turno solapado entre
   // la verificación y el insert, la transacción devuelve null → 409.
   const turno = await prisma.$transaction(async (tx) => {
@@ -108,7 +126,8 @@ export async function POST(req: NextRequest) {
         clienteEmail: cliente.email === "" ? null : cliente.email,
         fechaInicio: inicio,
         fechaFin: fin,
-        estado: servicio.requierePago ? "PENDIENTE_PAGO" : "CONFIRMADO",
+        estado: estadoInicial,
+        cancelToken,
         notas: cliente.notas === "" ? null : cliente.notas,
       },
       select: { id: true },
@@ -123,8 +142,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Flujo de pago según `metodoPago` del servicio:
-  // - MERCADOPAGO: crea preferencia y devuelve `checkoutUrl` (turno queda
-  //   PENDIENTE_PAGO; lo confirma el webhook al aprobar el pago).
+  // - MERCADOPAGO: crea preferencia y persiste `mpPreferenceId` + `mpInitPoint`
+  //   en el Turno. La confirmación monta el Wallet Brick con esos datos.
+  //   El turno queda PENDIENTE_PAGO; lo confirma el webhook al aprobar el pago.
   // - TRANSFERENCIA: turno queda PENDIENTE_PAGO; la confirmación muestra
   //   los datos bancarios del profesional.
   // - EFECTIVO / SIN_PAGO: el turno ya quedó CONFIRMADO en el INSERT.
@@ -132,10 +152,11 @@ export async function POST(req: NextRequest) {
   if (
     servicio.requierePago &&
     servicio.metodoPago === "MERCADOPAGO" &&
-    profesional.mpAccessToken
+    profesional.mpAccessToken &&
+    esPro
   ) {
     try {
-      const { initPoint } = await crearPreferenceTurno(
+      const { initPoint, preferenceId } = await crearPreferenceTurno(
         {
           id: turno.id,
           profesionalSlug,
@@ -147,6 +168,13 @@ export async function POST(req: NextRequest) {
         profesional.mpAccessToken,
       );
       checkoutUrl = initPoint || null;
+      await prisma.turno.update({
+        where: { id: turno.id },
+        data: {
+          mpPreferenceId: preferenceId || null,
+          mpInitPoint: initPoint || null,
+        },
+      });
     } catch (err) {
       console.error("Error al crear la preferencia de Mercado Pago:", err);
     }
@@ -156,7 +184,7 @@ export async function POST(req: NextRequest) {
   // requiere pago — en ese caso lo manda el webhook MP cuando aprueba el
   // pago). Best-effort: si Resend falla no abortamos la reserva.
   const emailCliente = cliente.email === "" ? null : cliente.email;
-  if (!servicio.requierePago && emailCliente) {
+  if (estadoInicial === "CONFIRMADO" && emailCliente) {
     try {
       await sendConfirmacionReserva({
         clienteNombre: cliente.nombre,
@@ -169,6 +197,7 @@ export async function POST(req: NextRequest) {
           slug: profesional.slug,
         },
         turnoId: turno.id,
+        cancelToken,
       });
     } catch (err) {
       console.error(

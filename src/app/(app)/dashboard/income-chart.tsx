@@ -21,10 +21,10 @@ export function IncomeChart({ data }: { data: DiaIngreso[] }) {
     return (
       <div className="flex h-40 flex-col items-center justify-center px-6 text-center">
         <p className="text-sm text-muted-foreground">
-          Sin pagos en los últimos 30 días.
+          Sin ingresos en los últimos 30 días.
         </p>
         <p className="mt-1 text-xs text-subtle">
-          Conectá Mercado Pago en Configuración para empezar a cobrar.
+          Cuando tus turnos se confirmen, vas a ver tus ingresos acá.
         </p>
       </div>
     );

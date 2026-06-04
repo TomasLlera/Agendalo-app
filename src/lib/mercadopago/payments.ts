@@ -22,6 +22,7 @@ export async function crearPreferenceTurno(
   mpAccessToken: string,
 ): Promise<{ initPoint: string; preferenceId: string }> {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const esHttps = base.startsWith("https://");
   const preference = new Preference(mpClientProfesional(mpAccessToken));
 
   const result = await preference.create({
@@ -42,7 +43,11 @@ export async function crearPreferenceTurno(
         pending: `${base}/p/${turno.profesionalSlug}/confirmacion?turnoId=${turno.id}`,
         failure: `${base}/p/${turno.profesionalSlug}/confirmacion?turnoId=${turno.id}`,
       },
-      auto_return: "approved",
+      // MP exige HTTPS en back_urls cuando se usa auto_return. En dev local
+      // (http://localhost) lo omitimos para no fallar la creación; el cliente
+      // queda en MP y vuelve manualmente. En el flow con Wallet Brick esto
+      // es irrelevante porque el pago no redirige (queda embebido).
+      ...(esHttps ? { auto_return: "approved" as const } : {}),
       // El query `turnoId` permite al webhook identificar al turno (y por
       // ende al profesional + su mpAccessToken) sin tener que llamar a MP
       // primero. Es necesario porque el pago vive en la cuenta del

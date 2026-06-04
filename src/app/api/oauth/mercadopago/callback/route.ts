@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
       data: {
         mpAccessToken: token.access_token,
         mpUserId: String(token.user_id),
+        mpPublicKey: token.public_key ?? null,
       },
     });
   } catch {

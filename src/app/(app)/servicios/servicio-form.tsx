@@ -25,13 +25,20 @@ const SELECT_CLASS =
 
 const DESCRIPCION_MAX = 280;
 
-type ServicioFormProps =
+type ServicioFormProps = (
   | { mode: "crear"; servicio?: undefined }
-  | { mode: "editar"; servicio: { id: string } & ServicioFormValues };
+  | { mode: "editar"; servicio: { id: string } & ServicioFormValues }
+) & { esPro: boolean };
 
 export function ServicioForm(props: ServicioFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  // Cobrar con Mercado Pago es exclusivo de Pro: en Free se oculta la opción
+  // (el cliente puede cobrar por transferencia/efectivo).
+  const metodosDisponibles = props.esPro
+    ? METODOS_PAGO
+    : METODOS_PAGO.filter((m) => m.value !== "MERCADOPAGO");
 
   const {
     register,
@@ -58,7 +65,7 @@ export function ServicioForm(props: ServicioFormProps) {
             precio: "",
             moneda: "ARS",
             requierePago: false,
-            metodoPago: "MERCADOPAGO",
+            metodoPago: props.esPro ? "MERCADOPAGO" : "TRANSFERENCIA",
           },
   });
 
@@ -177,7 +184,7 @@ export function ServicioForm(props: ServicioFormProps) {
               aria-invalid={!!errors.metodoPago}
               className={SELECT_CLASS}
             >
-              {METODOS_PAGO.map((m) => (
+              {metodosDisponibles.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>

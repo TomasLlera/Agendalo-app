@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addDays, format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -24,7 +24,7 @@ export type ServicioPublico = {
   requierePago: boolean;
 };
 
-type Slot = { inicioISO: string; etiqueta: string };
+type Slot = { inicioISO: string; etiqueta: string; finEtiqueta: string };
 
 const PASOS = ["Servicio", "Día", "Horario", "Datos"] as const;
 /** Cantidad de días hacia adelante ofrecidos para reservar. */
@@ -50,6 +50,10 @@ export function BookingFlow({
   const [fecha, setFecha] = useState<string | null>(null);
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [cargandoSlots, setCargandoSlots] = useState(false);
+  /** Fechas con al menos un horario libre. `null` mientras se consultan. */
+  const [diasDisponibles, setDiasDisponibles] = useState<Set<string> | null>(
+    null,
+  );
   const [slot, setSlot] = useState<Slot | null>(null);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -57,16 +61,38 @@ export function BookingFlow({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<DatosCliente>({
     resolver: zodResolver(datosClienteSchema),
     defaultValues: { nombre: "", telefono: "", email: "", notas: "" },
   });
+  const watchEmail = useWatch({ control, name: "email" });
 
   const hoy = new Date();
   const dias = Array.from({ length: DIAS_DISPONIBLES }, (_, i) =>
     addDays(hoy, i),
   );
+
+  async function cargarDisponibilidad(s: ServicioPublico) {
+    setDiasDisponibles(null);
+    const desde = format(dias[0], "yyyy-MM-dd");
+    try {
+      const res = await fetch(
+        `/api/profesional/${slug}/disponibilidad?desde=${desde}&dias=${DIAS_DISPONIBLES}&servicioId=${s.id}`,
+      );
+      const data = await res.json();
+      setDiasDisponibles(
+        res.ok && Array.isArray(data.dias)
+          ? new Set<string>(data.dias)
+          : new Set<string>(),
+      );
+    } catch {
+      // Ante un error dejamos todos los días habilitados: el paso Horario
+      // sigue validando la disponibilidad real.
+      setDiasDisponibles(new Set<string>());
+    }
+  }
 
   function elegirServicio(s: ServicioPublico) {
     setServicio(s);
@@ -74,6 +100,7 @@ export function BookingFlow({
     setSlots(null);
     setSlot(null);
     setPaso(1);
+    void cargarDisponibilidad(s);
   }
 
   async function elegirFecha(valor: string) {
@@ -121,16 +148,11 @@ export function BookingFlow({
       if (res.status === 201) {
         const respuesta = (data ?? {}) as {
           turnoId?: unknown;
-          checkoutUrl?: unknown;
         };
-        // Servicio con pago + MP conectado → al checkout de Mercado Pago.
-        if (
-          typeof respuesta.checkoutUrl === "string" &&
-          respuesta.checkoutUrl
-        ) {
-          window.location.assign(respuesta.checkoutUrl);
-          return;
-        }
+        // Siempre vamos a la confirmación: ella decide si monta el Wallet
+        // Brick (MP embebido), muestra los datos bancarios (transferencia)
+        // o sólo confirma (efectivo / sin pago). Evita salir de Agendalo
+        // cuando el profesional tiene MP conectado con public_key.
         const turnoId = respuesta.turnoId ? String(respuesta.turnoId) : "";
         router.push(`/p/${slug}/confirmacion?turnoId=${turnoId}`);
         return;
@@ -148,7 +170,7 @@ export function BookingFlow({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface">
+    <div className="ring-gradient-brand glow-violet relative rounded-2xl border border-border/70 bg-surface">
       {/* Indicador de pasos */}
       <div className="flex items-center gap-1 border-b border-border px-4 py-3">
         {PASOS.map((nombre, i) => {
@@ -170,7 +192,7 @@ export function BookingFlow({
               <span
                 className={cn(
                   "flex size-5 shrink-0 items-center justify-center rounded-full text-[11px]",
-                  actual && "bg-primary text-primary-foreground",
+                  actual && "bg-gradient-brand font-medium text-white shadow-sm",
                   completado && "bg-surface-elevated text-secondary",
                   !actual && !completado && "bg-surface-elevated",
                 )}
@@ -192,11 +214,11 @@ export function BookingFlow({
                 key={s.id}
                 type="button"
                 onClick={() => elegirServicio(s)}
-                className="flex flex-col gap-1 rounded-lg border border-border bg-background p-4 text-left transition-colors hover:border-border-strong"
+                className="group flex flex-col gap-2 rounded-xl border border-border bg-background/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-secondary/40 hover:bg-surface-elevated hover:shadow-[0_0_30px_-12px_rgba(124,58,237,0.5)]"
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">{s.nombre}</span>
-                  <span className="text-sm font-medium">
+                  <span className="shrink-0 rounded-full bg-secondary/10 px-2.5 py-1 text-sm font-semibold text-secondary">
                     {formatearPrecio(s.precio, s.moneda)}
                   </span>
                 </div>
@@ -205,7 +227,7 @@ export function BookingFlow({
                     {s.descripcion}
                   </span>
                 ) : null}
-                <span className="flex items-center gap-1.5 text-xs text-subtle">
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-surface-elevated px-2 py-0.5 text-xs text-subtle">
                   <Clock className="size-3.5" strokeWidth={1.5} />
                   {s.duracionMinutos} min
                 </span>
@@ -221,12 +243,21 @@ export function BookingFlow({
             <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-5">
               {dias.map((dia) => {
                 const valor = format(dia, "yyyy-MM-dd");
+                // Hasta que llega la disponibilidad dejamos todo habilitado.
+                const sinCupo =
+                  diasDisponibles !== null && !diasDisponibles.has(valor);
                 return (
                   <button
                     key={valor}
                     type="button"
+                    disabled={sinCupo}
                     onClick={() => elegirFecha(valor)}
-                    className="flex flex-col items-center gap-0.5 rounded-lg border border-border bg-background py-2.5 transition-colors hover:border-border-strong"
+                    className={cn(
+                      "flex flex-col items-center gap-0.5 rounded-lg border border-border bg-background py-2.5 transition-colors",
+                      sinCupo
+                        ? "cursor-not-allowed opacity-40"
+                        : "hover:border-secondary/50",
+                    )}
                   >
                     <span className="text-[11px] capitalize text-muted-foreground">
                       {format(dia, "EEE", { locale: es })}
@@ -241,6 +272,11 @@ export function BookingFlow({
                 );
               })}
             </div>
+            {diasDisponibles !== null && diasDisponibles.size === 0 ? (
+              <p className="mt-3 text-center text-sm text-muted-foreground">
+                No hay horarios disponibles en los próximos días.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -267,7 +303,7 @@ export function BookingFlow({
                     key={s.inicioISO}
                     type="button"
                     onClick={() => elegirSlot(s)}
-                    className="rounded-lg border border-border bg-background py-2 text-sm transition-colors hover:border-border-strong"
+                    className="rounded-lg border border-border bg-background py-2 text-sm transition-colors hover:border-secondary/50"
                   >
                     {s.etiqueta}
                   </button>
@@ -301,7 +337,7 @@ export function BookingFlow({
                 {format(new Date(`${fecha}T12:00:00`), "EEEE d 'de' MMMM", {
                   locale: es,
                 })}{" "}
-                · {slot.etiqueta} h
+                · {slot.etiqueta}–{slot.finEtiqueta} h
               </p>
               <p className="mt-0.5 text-muted-foreground">
                 {formatearPrecio(servicio.precio, servicio.moneda)}
@@ -332,9 +368,12 @@ export function BookingFlow({
                 <Label htmlFor="telefono">Teléfono (WhatsApp)</Label>
                 <Input
                   id="telefono"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   {...register("telefono")}
                   aria-invalid={!!errors.telefono}
-                  placeholder="+5491155551234"
+                  placeholder="+54"
                 />
                 {errors.telefono ? (
                   <p className="text-sm text-destructive">
@@ -342,7 +381,7 @@ export function BookingFlow({
                   </p>
                 ) : (
                   <p className="text-xs text-subtle">
-                    Con código de país, sin espacios.
+                    Con código de país (+54). Podés usar espacios.
                   </p>
                 )}
               </div>
@@ -392,6 +431,10 @@ export function BookingFlow({
                     ? "Reservar y pagar"
                     : "Confirmar reserva"}
               </Button>
+              <p className="text-center text-xs text-subtle">
+                Te enviamos la confirmación por WhatsApp
+                {watchEmail ? " y email" : ""}.
+              </p>
             </form>
           </div>
         ) : null}

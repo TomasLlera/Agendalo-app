@@ -16,7 +16,12 @@ export const datosClienteSchema = z.object({
   telefono: z
     .string()
     .trim()
-    .regex(TELEFONO_RE, "Teléfono inválido. Usá el formato +5491155551234."),
+    // Tolera espacios, guiones y paréntesis que el cliente suele escribir.
+    .transform((v) => v.replace(/[\s\-().]/g, ""))
+    .refine(
+      (v) => TELEFONO_RE.test(v),
+      "Teléfono inválido. Usá el formato +5491155551234.",
+    ),
   email: z
     .string()
     .trim()

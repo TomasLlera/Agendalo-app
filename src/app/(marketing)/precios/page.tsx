@@ -8,7 +8,7 @@ import { PRECIO_PRO_ARS } from "@/lib/plan";
 export const metadata: Metadata = {
   title: "Precios — Agendalo",
   description:
-    "Plan Free gratis para siempre. Plan Pro con recordatorios por WhatsApp y cobros con Mercado Pago.",
+    "Plan Free gratis para siempre. Plan Pro con recordatorios por WhatsApp, cobros con Mercado Pago y estadísticas de tu negocio.",
 };
 
 const formatoARS = new Intl.NumberFormat("es-AR", {
@@ -55,6 +55,12 @@ const FILAS: Fila[] = [
   {
     feature: "Cobros y señas con Mercado Pago",
     detalle: "La plata cae directo en tu cuenta",
+    free: false,
+    pro: true,
+  },
+  {
+    feature: "Estadísticas y reportes contables",
+    detalle: "Ingresos por mes, por servicio y por día",
     free: false,
     pro: true,
   },
@@ -113,7 +119,7 @@ export default function PreciosPage() {
             nombre="Free"
             precio="$ 0"
             sufijo="para siempre"
-            descripcion="Lo necesario para tener tu agenda online y empezar a recibir reservas."
+            descripcion="Todo lo necesario para tener tu agenda online y empezar a recibir reservas."
             cta="Empezar gratis"
             variantCta="outline"
           />

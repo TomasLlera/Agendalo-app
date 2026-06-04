@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { getCurrentProfesional } from "@/lib/auth";
+import { isPro } from "@/lib/plan";
 import { ServicioForm } from "../servicio-form";
 
 export const metadata: Metadata = {
   title: "Nuevo servicio — Agendalo",
 };
 
-export default function NuevoServicioPage() {
+export default async function NuevoServicioPage() {
+  const profesional = await getCurrentProfesional();
   return (
     <div className="mx-auto max-w-2xl">
       <Link
@@ -28,7 +31,7 @@ export default function NuevoServicioPage() {
       </header>
 
       <div className="mt-8">
-        <ServicioForm mode="crear" />
+        <ServicioForm mode="crear" esPro={isPro(profesional)} />
       </div>
     </div>
   );

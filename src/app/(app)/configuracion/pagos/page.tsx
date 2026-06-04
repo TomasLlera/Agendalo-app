@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { CheckCircle2, CreditCard } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, CreditCard, Crown } from "lucide-react";
 import { getCurrentProfesional } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Button } from "@/components/ui/button";
+import { isPro } from "@/lib/plan";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { conectarMercadoPago, desconectarMercadoPago } from "./actions";
 import { DatosBancariosForm } from "./datos-bancarios-form";
 
@@ -31,6 +34,7 @@ export default async function PagosPage({
   const profesional = await getCurrentProfesional();
   const { conectado, error } = await searchParams;
   const estaConectado = Boolean(profesional.mpAccessToken);
+  const pro = isPro(profesional);
   const mensajeError = error ? MENSAJES_ERROR[error] : undefined;
 
   const datosBancarios = await prisma.datosBancarios.findUnique({
@@ -74,7 +78,29 @@ export default async function PagosPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {estaConectado ? (
+          {!pro ? (
+            // Free (no admin): nunca exponemos la conexión MP, ni siquiera si
+            // quedó un token de antes. Solo el CTA a Pro. Transferencia sigue
+            // disponible en la tarjeta de abajo.
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-background/50 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Crown className="size-4 text-secondary" strokeWidth={1.5} />
+                Cobrar online es parte de Pro
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Conectá Mercado Pago para cobrar señas o el total al reservar.
+                Disponible en el plan Pro. En Free podés cobrar por
+                transferencia.
+              </p>
+              <Link
+                href="/configuracion/plan"
+                className={cn(buttonVariants(), "mt-1")}
+              >
+                <Crown strokeWidth={1.5} />
+                Pasar a Pro
+              </Link>
+            </div>
+          ) : estaConectado ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2 text-sm text-success">
                 <CheckCircle2 className="size-4" strokeWidth={1.5} />

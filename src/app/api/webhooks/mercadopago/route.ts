@@ -153,6 +153,7 @@ async function procesarPagoTurno(
       clienteNombre: true,
       clienteEmail: true,
       fechaInicio: true,
+      cancelToken: true,
       servicio: { select: { nombre: true } },
       profesional: {
         select: {
@@ -216,6 +217,8 @@ async function procesarPagoTurno(
           timezone: turno.profesional.timezone,
           slug: turno.profesional.slug,
         },
+        turnoId: turno.id,
+        cancelToken: turno.cancelToken ?? undefined,
       });
     } catch (err) {
       console.error(
