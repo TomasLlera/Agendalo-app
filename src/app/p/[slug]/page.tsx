@@ -34,7 +34,18 @@ export default async function PublicBookingPage({ params }: PageProps) {
   const profesional = await prisma.profesional.findUnique({
     where: { slug },
     include: {
-      servicios: { where: { activo: true }, orderBy: { createdAt: "asc" } },
+      servicios: {
+        where: { activo: true },
+        orderBy: { createdAt: "asc" },
+        include: {
+          miembros: {
+            where: { miembro: { activo: true } },
+            include: {
+              miembro: { select: { id: true, nombre: true, fotoUrl: true } },
+            },
+          },
+        },
+      },
     },
   });
   if (!profesional) notFound();
@@ -47,6 +58,11 @@ export default async function PublicBookingPage({ params }: PageProps) {
     precio: s.precio.toString(),
     moneda: s.moneda,
     requierePago: s.requierePago,
+    miembros: s.miembros.map((ms) => ({
+      id: ms.miembro.id,
+      nombre: ms.miembro.nombre,
+      fotoUrl: ms.miembro.fotoUrl,
+    })),
   }));
 
   return (

@@ -15,6 +15,7 @@ export async function GET(
   const { slug } = await params;
   const date = req.nextUrl.searchParams.get("date");
   const servicioId = req.nextUrl.searchParams.get("servicioId");
+  const miembroId = req.nextUrl.searchParams.get("miembroId");
 
   if (!date || !servicioId || !FECHA_RE.test(date)) {
     return NextResponse.json(
@@ -36,7 +37,7 @@ export async function GET(
 
   const servicio = await prisma.servicio.findFirst({
     where: { id: servicioId, profesionalId: profesional.id, activo: true },
-    select: { duracionMinutos: true },
+    select: { id: true, duracionMinutos: true },
   });
   if (!servicio) {
     return NextResponse.json(
@@ -50,6 +51,7 @@ export async function GET(
     profesional.timezone,
     date,
     servicio,
+    { miembroId },
   );
   return NextResponse.json({ slots });
 }

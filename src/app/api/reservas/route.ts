@@ -4,7 +4,10 @@ import { addMinutes } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { prisma } from "@/lib/db";
 import { isPro } from "@/lib/plan";
-import { generateAvailableSlots } from "@/lib/booking/slots";
+import {
+  generateAvailableSlots,
+  miembrosDeServicio,
+} from "@/lib/booking/slots";
 import { reservaSchema } from "@/lib/booking/validate";
 import { crearPreferenceTurno } from "@/lib/mercadopago/payments";
 import { sendConfirmacionReserva } from "@/lib/resend/emails";
@@ -25,7 +28,8 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { profesionalSlug, servicioId, fechaInicio, cliente } = parsed.data;
+  const { profesionalSlug, servicioId, miembroId, fechaInicio, cliente } =
+    parsed.data;
 
   const profesional = await prisma.profesional.findUnique({
     where: { slug: profesionalSlug },
@@ -75,13 +79,34 @@ export async function POST(req: NextRequest) {
   }
   const fin = addMinutes(inicio, servicio.duracionMinutos);
 
-  // El slot debe seguir siendo válido (dentro de horarios, sin bloqueos).
+  // Miembros del equipo que prestan este servicio. Vacío = sin equipo
+  // asignado → modo cuenta (capacidad 1, comportamiento monopersona).
+  const linked = await miembrosDeServicio(profesional.id, servicio.id);
+  const modoEquipo = linked.length > 0;
+
+  if (miembroId && !linked.includes(miembroId)) {
+    return NextResponse.json(
+      { error: "El profesional elegido no atiende este servicio." },
+      { status: 400 },
+    );
+  }
+  // En modo cuenta no se asigna miembro; en modo equipo, `miembroId` puede
+  // venir nulo ("cualquiera"): lo resuelve la transacción más abajo.
+  const candidatos = modoEquipo
+    ? miembroId
+      ? [miembroId]
+      : linked
+    : null;
+
+  // El slot debe seguir siendo válido (dentro de horarios, sin bloqueos y con
+  // al menos un miembro libre si hay equipo).
   const fecha = formatInTimeZone(inicio, profesional.timezone, "yyyy-MM-dd");
   const disponibles = await generateAvailableSlots(
     profesional.id,
     profesional.timezone,
     fecha,
     servicio,
+    { miembroId },
   );
   if (!disponibles.some((s) => s.inicioISO === inicio.toISOString())) {
     return NextResponse.json(
@@ -105,22 +130,35 @@ export async function POST(req: NextRequest) {
 
   // Creación con guarda de concurrencia: si aparece un turno solapado entre
   // la verificación y el insert, la transacción devuelve null → 409.
+  //
+  // - Modo cuenta (`candidatos === null`): cualquier turno solapado bloquea.
+  // - Modo equipo: se busca un miembro candidato sin turno solapado. Si se
+  //   pidió uno puntual y está ocupado, o no queda ninguno libre → null.
   const turno = await prisma.$transaction(async (tx) => {
-    const solapado = await tx.turno.findFirst({
+    const solapados = await tx.turno.findMany({
       where: {
         profesionalId: profesional.id,
         estado: { not: "CANCELADO" },
         fechaInicio: { lt: fin },
         fechaFin: { gt: inicio },
       },
-      select: { id: true },
+      select: { miembroId: true },
     });
-    if (solapado) return null;
+
+    let miembroAsignado: string | null = null;
+    if (candidatos === null) {
+      if (solapados.length > 0) return null;
+    } else {
+      const ocupados = new Set(solapados.map((t) => t.miembroId));
+      miembroAsignado = candidatos.find((id) => !ocupados.has(id)) ?? null;
+      if (!miembroAsignado) return null;
+    }
 
     return tx.turno.create({
       data: {
         profesionalId: profesional.id,
         servicioId: servicio.id,
+        miembroId: miembroAsignado,
         clienteNombre: cliente.nombre,
         clienteTelefono: cliente.telefono,
         clienteEmail: cliente.email === "" ? null : cliente.email,

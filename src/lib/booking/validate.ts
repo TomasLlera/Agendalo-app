@@ -41,6 +41,9 @@ export type DatosCliente = z.infer<typeof datosClienteSchema>;
 export const reservaSchema = z.object({
   profesionalSlug: z.string().min(1),
   servicioId: z.string().min(1),
+  // Miembro elegido por el cliente. Ausente/null = "cualquiera disponible":
+  // el servidor asigna un miembro libre que preste el servicio.
+  miembroId: z.string().min(1).nullish(),
   fechaInicio: z
     .string()
     .refine((v) => !Number.isNaN(Date.parse(v)), "Fecha de inicio inválida."),

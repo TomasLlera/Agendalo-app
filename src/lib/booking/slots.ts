@@ -14,20 +14,73 @@ export type Slot = {
 
 type Horario = { diaSemana: number; horaInicio: string; horaFin: string };
 type Ocupacion = { fechaInicio: Date; fechaFin: Date };
+type TurnoOcupado = {
+  fechaInicio: Date;
+  fechaFin: Date;
+  miembroId: string | null;
+};
+
+/** Opciones de cálculo de disponibilidad. */
+type SlotsOptions = {
+  /** Si se pasa, sólo cuenta la disponibilidad de ese miembro. */
+  miembroId?: string | null;
+};
+
+/**
+ * Ids de los miembros activos que prestan el servicio. Si está vacío, el
+ * servicio no tiene equipo asignado y la disponibilidad se calcula a nivel
+ * cuenta (capacidad 1, comportamiento clásico monopersona).
+ */
+export async function miembrosDeServicio(
+  profesionalId: string,
+  servicioId: string,
+): Promise<string[]> {
+  const miembros = await prisma.miembro.findMany({
+    where: {
+      profesionalId,
+      activo: true,
+      servicios: { some: { servicioId } },
+    },
+    select: { id: true },
+  });
+  return miembros.map((m) => m.id);
+}
+
+/**
+ * Resuelve qué miembros se consideran al calcular la disponibilidad:
+ * - `null`  → no hay equipo asignado al servicio: modo cuenta (capacidad 1).
+ * - `[]`    → el miembro pedido no presta el servicio: sin disponibilidad.
+ * - lista   → ids de miembros candidatos (uno si se pidió uno puntual).
+ */
+function resolverCandidatos(
+  linked: string[],
+  miembroId: string | null | undefined,
+): string[] | null {
+  if (linked.length === 0) return null;
+  if (miembroId) return linked.includes(miembroId) ? [miembroId] : [];
+  return linked;
+}
 
 /**
  * Construye los slots libres de un día a partir de datos ya cargados.
- * Pura y sin acceso a la base: la usan tanto el cálculo de un día puntual
- * como el de un rango de días.
+ *
+ * `miembrosCandidatos`:
+ * - `null`: capacidad 1 a nivel cuenta — el slot está libre si ningún turno
+ *   lo solapa (comportamiento clásico).
+ * - lista de ids: el slot está libre si al menos uno de esos miembros no
+ *   tiene un turno solapado (capacidad = cantidad de miembros libres).
+ *
+ * Pura y sin acceso a la base.
  */
 function construirSlotsDelDia(
   fecha: string,
   timezone: string,
   horariosDelDia: Horario[],
-  turnos: Ocupacion[],
+  turnos: TurnoOcupado[],
   bloqueos: Ocupacion[],
   dur: number,
   ahora: Date,
+  miembrosCandidatos: string[] | null,
 ): Slot[] {
   const slots: Slot[] = [];
   for (const h of horariosDelDia) {
@@ -42,11 +95,22 @@ function construirSlotsDelDia(
 
       const solapa = (otroIni: Date, otroFin: Date) =>
         cursor < otroFin && slotFin > otroIni;
-      const ocupado =
-        turnos.some((t) => solapa(t.fechaInicio, t.fechaFin)) ||
-        bloqueos.some((b) => solapa(b.fechaInicio, b.fechaFin));
 
-      if (!ocupado) {
+      // Un bloqueo (a nivel cuenta) cierra el slot para todos.
+      if (bloqueos.some((b) => solapa(b.fechaInicio, b.fechaFin))) continue;
+
+      const libre =
+        miembrosCandidatos === null
+          ? !turnos.some((t) => solapa(t.fechaInicio, t.fechaFin))
+          : miembrosCandidatos.some(
+              (mid) =>
+                !turnos.some(
+                  (t) =>
+                    t.miembroId === mid && solapa(t.fechaInicio, t.fechaFin),
+                ),
+            );
+
+      if (libre) {
         slots.push({
           inicioISO: cursor.toISOString(),
           etiqueta: formatInTimeZone(cursor, timezone, "HH:mm"),
@@ -63,7 +127,8 @@ function construirSlotsDelDia(
  *
  * 1. Toma las franjas (`HorarioDisponible`) del día de la semana.
  * 2. Divide cada franja en slots de `duracionMinutos`.
- * 3. Descarta los slots que solapan con turnos no cancelados o bloqueos.
+ * 3. Descarta los slots según la capacidad del equipo (ver
+ *    `construirSlotsDelDia`) y los bloqueos.
  * 4. Descarta los slots que ya pasaron.
  *
  * `fecha` es `YYYY-MM-DD` interpretada en la zona horaria del profesional.
@@ -72,7 +137,8 @@ export async function generateAvailableSlots(
   profesionalId: string,
   timezone: string,
   fecha: string,
-  servicio: { duracionMinutos: number },
+  servicio: { id: string; duracionMinutos: number },
+  opts: SlotsOptions = {},
 ): Promise<Slot[]> {
   const [anio, mes, dia] = fecha.split("-").map(Number);
   if (!anio || !mes || !dia) return [];
@@ -80,10 +146,14 @@ export async function generateAvailableSlots(
   // Día de la semana (0 = domingo … 6 = sábado) de la fecha pedida.
   const diaSemana = new Date(Date.UTC(anio, mes - 1, dia, 12)).getUTCDay();
 
-  const horarios = await prisma.horarioDisponible.findMany({
-    where: { profesionalId, diaSemana },
-  });
+  const [horarios, linked] = await Promise.all([
+    prisma.horarioDisponible.findMany({ where: { profesionalId, diaSemana } }),
+    miembrosDeServicio(profesionalId, servicio.id),
+  ]);
   if (horarios.length === 0) return [];
+
+  const candidatos = resolverCandidatos(linked, opts.miembroId);
+  if (candidatos !== null && candidatos.length === 0) return [];
 
   const inicioDia = fromZonedTime(`${fecha}T00:00:00`, timezone);
   const finDia = fromZonedTime(`${fecha}T23:59:59.999`, timezone);
@@ -95,7 +165,7 @@ export async function generateAvailableSlots(
         estado: { not: "CANCELADO" },
         fechaInicio: { gte: inicioDia, lte: finDia },
       },
-      select: { fechaInicio: true, fechaFin: true },
+      select: { fechaInicio: true, fechaFin: true, miembroId: true },
     }),
     prisma.bloqueo.findMany({
       where: {
@@ -115,6 +185,7 @@ export async function generateAvailableSlots(
     bloqueos,
     servicio.duracionMinutos,
     new Date(),
+    candidatos,
   );
 
   slots.sort((a, b) => a.inicioISO.localeCompare(b.inicioISO));
@@ -141,15 +212,20 @@ export async function getDiasConDisponibilidad(
   timezone: string,
   desde: string,
   dias: number,
-  servicio: { duracionMinutos: number },
+  servicio: { id: string; duracionMinutos: number },
+  opts: SlotsOptions = {},
 ): Promise<string[]> {
   const fechas = Array.from({ length: dias }, (_, i) => sumarDias(desde, i));
   if (fechas.length === 0) return [];
 
-  const horarios = await prisma.horarioDisponible.findMany({
-    where: { profesionalId },
-  });
+  const [horarios, linked] = await Promise.all([
+    prisma.horarioDisponible.findMany({ where: { profesionalId } }),
+    miembrosDeServicio(profesionalId, servicio.id),
+  ]);
   if (horarios.length === 0) return [];
+
+  const candidatos = resolverCandidatos(linked, opts.miembroId);
+  if (candidatos !== null && candidatos.length === 0) return [];
 
   const inicioRango = fromZonedTime(`${desde}T00:00:00`, timezone);
   const finRango = fromZonedTime(
@@ -164,7 +240,7 @@ export async function getDiasConDisponibilidad(
         estado: { not: "CANCELADO" },
         fechaInicio: { gte: inicioRango, lte: finRango },
       },
-      select: { fechaInicio: true, fechaFin: true },
+      select: { fechaInicio: true, fechaFin: true, miembroId: true },
     }),
     prisma.bloqueo.findMany({
       where: {
@@ -192,6 +268,7 @@ export async function getDiasConDisponibilidad(
       bloqueos,
       servicio.duracionMinutos,
       ahora,
+      candidatos,
     );
     if (slots.length > 0) disponibles.push(fecha);
   }

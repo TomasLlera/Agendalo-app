@@ -18,6 +18,7 @@ export async function GET(
   const { slug } = await params;
   const desde = req.nextUrl.searchParams.get("desde");
   const servicioId = req.nextUrl.searchParams.get("servicioId");
+  const miembroId = req.nextUrl.searchParams.get("miembroId");
   const dias = Math.min(
     Math.max(Number(req.nextUrl.searchParams.get("dias")) || 0, 1),
     MAX_DIAS,
@@ -40,7 +41,7 @@ export async function GET(
 
   const servicio = await prisma.servicio.findFirst({
     where: { id: servicioId, profesionalId: profesional.id, activo: true },
-    select: { duracionMinutos: true },
+    select: { id: true, duracionMinutos: true },
   });
   if (!servicio) {
     return NextResponse.json(
@@ -55,6 +56,7 @@ export async function GET(
     desde,
     dias,
     servicio,
+    { miembroId },
   );
   return NextResponse.json({ dias: dispon });
 }

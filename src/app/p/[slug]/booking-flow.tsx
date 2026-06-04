@@ -14,6 +14,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { datosClienteSchema, type DatosCliente } from "@/lib/booking/validate";
 
+export type MiembroPublico = {
+  id: string;
+  nombre: string;
+  fotoUrl: string | null;
+};
+
 export type ServicioPublico = {
   id: string;
   nombre: string;
@@ -22,6 +28,7 @@ export type ServicioPublico = {
   precio: string;
   moneda: string;
   requierePago: boolean;
+  miembros: MiembroPublico[];
 };
 
 type Slot = { inicioISO: string; etiqueta: string; finEtiqueta: string };
@@ -47,6 +54,11 @@ export function BookingFlow({
   const router = useRouter();
   const [paso, setPaso] = useState(0);
   const [servicio, setServicio] = useState<ServicioPublico | null>(null);
+  // Sub-vista del paso "Servicio": elegir con quién atenderse cuando el
+  // servicio lo dan dos o más miembros del equipo.
+  const [eligiendoMiembro, setEligiendoMiembro] = useState(false);
+  /** Miembro elegido; `null` = "cualquiera disponible". */
+  const [miembroId, setMiembroId] = useState<string | null>(null);
   const [fecha, setFecha] = useState<string | null>(null);
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [cargandoSlots, setCargandoSlots] = useState(false);
@@ -74,12 +86,15 @@ export function BookingFlow({
     addDays(hoy, i),
   );
 
-  async function cargarDisponibilidad(s: ServicioPublico) {
+  const sufijoMiembro = (mid: string | null) =>
+    mid ? `&miembroId=${mid}` : "";
+
+  async function cargarDisponibilidad(s: ServicioPublico, mid: string | null) {
     setDiasDisponibles(null);
     const desde = format(dias[0], "yyyy-MM-dd");
     try {
       const res = await fetch(
-        `/api/profesional/${slug}/disponibilidad?desde=${desde}&dias=${DIAS_DISPONIBLES}&servicioId=${s.id}`,
+        `/api/profesional/${slug}/disponibilidad?desde=${desde}&dias=${DIAS_DISPONIBLES}&servicioId=${s.id}${sufijoMiembro(mid)}`,
       );
       const data = await res.json();
       setDiasDisponibles(
@@ -99,8 +114,33 @@ export function BookingFlow({
     setFecha(null);
     setSlots(null);
     setSlot(null);
+    setMiembroId(null);
+    // Si el servicio lo dan varios miembros, se elige con quién; si no, se
+    // avanza directo al día (modo monopersona, sin cambios para el cliente).
+    if (s.miembros.length >= 2) {
+      setEligiendoMiembro(true);
+      return;
+    }
+    setEligiendoMiembro(false);
     setPaso(1);
-    void cargarDisponibilidad(s);
+    void cargarDisponibilidad(s, null);
+  }
+
+  function elegirMiembro(s: ServicioPublico, mid: string | null) {
+    setMiembroId(mid);
+    setEligiendoMiembro(false);
+    setFecha(null);
+    setSlots(null);
+    setSlot(null);
+    setPaso(1);
+    void cargarDisponibilidad(s, mid);
+  }
+
+  function volverDesdeDia() {
+    if (servicio && servicio.miembros.length >= 2) {
+      setEligiendoMiembro(true);
+    }
+    setPaso(0);
   }
 
   async function elegirFecha(valor: string) {
@@ -112,7 +152,7 @@ export function BookingFlow({
     setCargandoSlots(true);
     try {
       const res = await fetch(
-        `/api/profesional/${slug}/slots?date=${valor}&servicioId=${servicio.id}`,
+        `/api/profesional/${slug}/slots?date=${valor}&servicioId=${servicio.id}${sufijoMiembro(miembroId)}`,
       );
       const data = await res.json();
       setSlots(res.ok && Array.isArray(data.slots) ? data.slots : []);
@@ -140,6 +180,7 @@ export function BookingFlow({
         body: JSON.stringify({
           profesionalSlug: slug,
           servicioId: servicio.id,
+          miembroId,
           fechaInicio: slot.inicioISO,
           cliente: datos,
         }),
@@ -206,8 +247,61 @@ export function BookingFlow({
       </div>
 
       <div className="p-4">
+        {/* Paso 1 — Servicio o, si el servicio lo dan varios, ¿con quién? */}
+        {paso === 0 && eligiendoMiembro && servicio ? (
+          <div>
+            <BotonVolver onClick={() => setEligiendoMiembro(false)} />
+            <p className="mt-3 text-sm text-muted-foreground">
+              ¿Con quién querés atenderte para{" "}
+              <span className="font-medium text-foreground">
+                {servicio.nombre}
+              </span>
+              ?
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => elegirMiembro(servicio, null)}
+                className="group flex items-center gap-3 rounded-xl border border-border bg-background/60 p-3 text-left transition-all hover:-translate-y-0.5 hover:border-secondary/40 hover:bg-surface-elevated"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-brand text-white">
+                  <Check className="size-5" strokeWidth={2} />
+                </span>
+                <span className="flex flex-col">
+                  <span className="font-medium">Cualquiera disponible</span>
+                  <span className="text-xs text-subtle">
+                    Te asignamos a quien tenga lugar.
+                  </span>
+                </span>
+              </button>
+              {servicio.miembros.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => elegirMiembro(servicio, m.id)}
+                  className="group flex items-center gap-3 rounded-xl border border-border bg-background/60 p-3 text-left transition-all hover:-translate-y-0.5 hover:border-secondary/40 hover:bg-surface-elevated"
+                >
+                  {m.fotoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={m.fotoUrl}
+                      alt={m.nombre}
+                      className="size-10 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-secondary">
+                      {m.nombre.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="font-medium">{m.nombre}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {/* Paso 1 — Servicio */}
-        {paso === 0 ? (
+        {paso === 0 && !eligiendoMiembro ? (
           <div className="flex flex-col gap-2">
             {servicios.map((s) => (
               <button
@@ -239,7 +333,7 @@ export function BookingFlow({
         {/* Paso 2 — Día */}
         {paso === 1 ? (
           <div>
-            <BotonVolver onClick={() => setPaso(0)} />
+            <BotonVolver onClick={volverDesdeDia} />
             <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-5">
               {dias.map((dia) => {
                 const valor = format(dia, "yyyy-MM-dd");
@@ -343,6 +437,13 @@ export function BookingFlow({
                 {formatearPrecio(servicio.precio, servicio.moneda)}
                 {servicio.requierePago ? " · Requiere pago" : ""}
               </p>
+              {servicio.miembros.length >= 2 ? (
+                <p className="mt-0.5 text-muted-foreground">
+                  {miembroId
+                    ? `Con ${servicio.miembros.find((m) => m.id === miembroId)?.nombre ?? ""}`
+                    : "Con cualquiera disponible"}
+                </p>
+              ) : null}
             </div>
 
             <form

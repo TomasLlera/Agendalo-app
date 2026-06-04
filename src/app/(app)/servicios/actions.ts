@@ -55,9 +55,24 @@ export async function createServicio(raw: unknown): Promise<ResultadoServicio> {
     return { ok: false, error: ERROR_MP_PRO };
   }
 
-  await prisma.servicio.create({
+  const servicio = await prisma.servicio.create({
     data: { profesionalId: profesional.id, ...aDatosPrisma(parsed.data) },
+    select: { id: true },
   });
+
+  // Por defecto, todos los miembros activos pueden prestar el servicio nuevo.
+  // El profesional puede luego desasignarlo desde /equipo. Esto evita que un
+  // servicio recién creado quede sin equipo (y por ende sin disponibilidad)
+  // en cuentas que ya trabajan con varios miembros.
+  const miembros = await prisma.miembro.findMany({
+    where: { profesionalId: profesional.id, activo: true },
+    select: { id: true },
+  });
+  if (miembros.length > 0) {
+    await prisma.miembroServicio.createMany({
+      data: miembros.map((m) => ({ miembroId: m.id, servicioId: servicio.id })),
+    });
+  }
 
   revalidatePath("/servicios");
   return { ok: true };
