@@ -6,6 +6,7 @@ import {
   Clock,
   Settings,
   User,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ export const NAV = [
   { href: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
   { href: "/cancelados", label: "Cancelados", icon: CalendarX },
   { href: "/servicios", label: "Servicios", icon: Briefcase },
+  { href: "/equipo", label: "Equipo", icon: Users },
   { href: "/horarios", label: "Horarios", icon: Clock },
   { href: "/perfil", label: "Perfil", icon: User },
   { href: "/configuracion", label: "Configuración", icon: Settings },

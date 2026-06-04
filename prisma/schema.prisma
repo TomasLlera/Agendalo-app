@@ -42,6 +42,7 @@ model Profesional {
   mpSubscriptionId String?
   planExpiresAt    DateTime?
   servicios        Servicio[]
+  miembros         Miembro[]
   horarios         HorarioDisponible[]
   bloqueos         Bloqueo[]
   turnos           Turno[]
@@ -65,9 +66,41 @@ model Servicio {
   metodoPago      MetodoPago  @default(MERCADOPAGO)
   activo          Boolean     @default(true)
   turnos          Turno[]
+  miembros        MiembroServicio[]
   createdAt       DateTime    @default(now())
 
   @@index([profesionalId])
+}
+
+/**
+ * Persona del equipo que presta servicios (peluquero/a, profesional de salud,
+ * etc.). Pertenece a una cuenta (`Profesional`, que actúa como
+ * establecimiento). Para cuentas monopersona existe un único miembro creado
+ * automáticamente que representa al dueño.
+ */
+model Miembro {
+  id            String            @id @default(cuid())
+  profesional   Profesional       @relation(fields: [profesionalId], references: [id], onDelete: Cascade)
+  profesionalId String
+  nombre        String
+  fotoUrl       String?
+  activo        Boolean           @default(true)
+  servicios     MiembroServicio[]
+  turnos        Turno[]
+  createdAt     DateTime          @default(now())
+
+  @@index([profesionalId])
+}
+
+/** Relación N:N entre un miembro del equipo y los servicios que puede prestar. */
+model MiembroServicio {
+  miembro    Miembro  @relation(fields: [miembroId], references: [id], onDelete: Cascade)
+  miembroId  String
+  servicio   Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+  servicioId String
+
+  @@id([miembroId, servicioId])
+  @@index([servicioId])
 }
 
 model HorarioDisponible {
@@ -98,6 +131,8 @@ model Turno {
   profesionalId          String
   servicio               Servicio    @relation(fields: [servicioId], references: [id])
   servicioId             String
+  miembro                Miembro?    @relation(fields: [miembroId], references: [id])
+  miembroId              String?
   clienteNombre          String
   clienteTelefono        String
   clienteEmail           String?
@@ -114,6 +149,7 @@ model Turno {
   createdAt              DateTime    @default(now())
 
   @@index([profesionalId, fechaInicio])
+  @@index([miembroId, fechaInicio])
   @@index([estado, fechaInicio])
 }
 
