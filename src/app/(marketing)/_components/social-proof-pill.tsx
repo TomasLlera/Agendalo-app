@@ -10,6 +10,8 @@ type Profesion = {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   /** Label que aparece al lado al hacer hover/focus en este avatar. */
   label: string;
+  /** Color del label, a juego con el ícono. Legible en claro y oscuro. */
+  texto: string;
 };
 
 const PROFESIONES: Profesion[] = [
@@ -18,30 +20,35 @@ const PROFESIONES: Profesion[] = [
     nombre: "Peluquería",
     icon: Scissors,
     label: "Peluqueros & Barberos",
+    texto: "text-rose-600 dark:text-rose-400",
   },
   {
     gradient: "from-emerald-400 to-emerald-700",
     nombre: "Kinesiología",
     icon: Dumbbell,
     label: "Kinesiólogos & Fisio",
+    texto: "text-emerald-600 dark:text-emerald-400",
   },
   {
     gradient: "from-amber-400 to-amber-700",
     nombre: "Tatuajes",
     icon: PenTool,
     label: "Tatuadores",
+    texto: "text-amber-600 dark:text-amber-400",
   },
   {
     gradient: "from-sky-400 to-sky-700",
     nombre: "Psicología",
     icon: Brain,
     label: "Psicólogos & Psiquiatras",
+    texto: "text-sky-600 dark:text-sky-400",
   },
   {
     gradient: "from-violet-400 to-violet-700",
     nombre: "Educación",
     icon: Plus,
     label: "Y muchos más",
+    texto: "text-violet-600 dark:text-violet-400",
   },
 ];
 
@@ -129,7 +136,7 @@ export function SocialProofPill() {
         className={`min-w-[210px] text-center text-xs transition-colors duration-200 sm:min-w-[230px] ${
           esDefault
             ? "text-muted-foreground"
-            : "font-medium uppercase tracking-wide text-foreground/90"
+            : `font-medium uppercase tracking-wide ${PROFESIONES[active].texto}`
         }`}
       >
         {label}
