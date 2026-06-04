@@ -17,6 +17,8 @@ export type TurnoCalc = {
   fechaInicio: Date;
   servicioId: string;
   servicio: { nombre: string; precio: { toString(): string } };
+  miembroId: string | null;
+  miembro: { nombre: string } | null;
 };
 
 export type PuntoMes = {
@@ -28,6 +30,13 @@ export type PuntoMes = {
 
 export type FilaServicio = {
   servicioId: string;
+  nombre: string;
+  turnos: number;
+  ingresos: number;
+};
+
+export type FilaMiembro = {
+  miembroId: string;
   nombre: string;
   turnos: number;
   ingresos: number;
@@ -61,6 +70,7 @@ export type Estadisticas = {
   kpis: Kpis;
   porMes: PuntoMes[];
   porServicio: FilaServicio[];
+  porMiembro: FilaMiembro[];
   porDiaSemana: PuntoDiaSemana[];
   detalleDiario: PuntoDia[];
   etiquetaMesActual: string;
@@ -112,6 +122,7 @@ export function calcularEstadisticas(
   const ingresosPorMes = new Map<string, Decimal>();
   const turnosPorMes = new Map<string, number>();
   const porServicioMap = new Map<string, { nombre: string; turnos: number; ingresos: Decimal }>();
+  const porMiembroMap = new Map<string, { nombre: string; turnos: number; ingresos: Decimal }>();
   const ingresosPorDia = new Map<string, Decimal>();
   const turnosPorDia = new Map<string, number>();
   const ingresosPorDow = new Map<number, Decimal>();
@@ -137,6 +148,21 @@ export function calcularEstadisticas(
       } else {
         porServicioMap.set(t.servicioId, {
           nombre: t.servicio.nombre,
+          turnos: 1,
+          ingresos: precio,
+        });
+      }
+
+      // Desglose por profesional (mes actual). Turnos sin miembro asignado
+      // (servicios sin equipo) se agrupan bajo una clave neutra.
+      const mid = t.miembroId ?? "—";
+      const accM = porMiembroMap.get(mid);
+      if (accM) {
+        accM.turnos += 1;
+        accM.ingresos = accM.ingresos.plus(precio);
+      } else {
+        porMiembroMap.set(mid, {
+          nombre: t.miembro?.nombre ?? "Sin asignar",
           turnos: 1,
           ingresos: precio,
         });
@@ -188,6 +214,16 @@ export function calcularEstadisticas(
     }))
     .sort((a, b) => b.ingresos - a.ingresos);
 
+  // Desglose por profesional (mes actual), ordenado por turnos desc.
+  const porMiembro: FilaMiembro[] = Array.from(porMiembroMap.entries())
+    .map(([miembroId, v]) => ({
+      miembroId,
+      nombre: v.nombre,
+      turnos: v.turnos,
+      ingresos: num(v.ingresos),
+    }))
+    .sort((a, b) => b.turnos - a.turnos);
+
   // Día de la semana (lun..dom). Marca el día con menos ingresos entre los que
   // tuvieron al menos un turno (para destacar el más flojo).
   const dowConDatos = Array.from({ length: 7 }, (_, i) => i + 1).filter(
@@ -233,6 +269,7 @@ export function calcularEstadisticas(
     kpis,
     porMes,
     porServicio,
+    porMiembro,
     porDiaSemana,
     detalleDiario,
     etiquetaMesActual: format(new Date(ya, ma - 1, 1), "MMMM yyyy", { locale: es }),

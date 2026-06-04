@@ -69,11 +69,14 @@ export default async function EstadisticasPage() {
       fechaInicio: true,
       servicioId: true,
       servicio: { select: { nombre: true, precio: true } },
+      miembroId: true,
+      miembro: { select: { nombre: true } },
     },
   });
 
   const stats = calcularEstadisticas(turnos, tz, ahora);
-  const { kpis, porMes, porServicio, porDiaSemana, detalleDiario } = stats;
+  const { kpis, porMes, porServicio, porMiembro, porDiaSemana, detalleDiario } =
+    stats;
 
   const totalAnual = porMes.reduce((s, m) => s + m.ingresos, 0);
   const totalServicios = porServicio.reduce((s, x) => s + x.ingresos, 0);
@@ -190,6 +193,39 @@ export default async function EstadisticasPage() {
           </div>
         )}
       </Panel>
+
+      {/* Desglose por profesional — solo si hay equipo (≥2 miembros). */}
+      {porMiembro.length >= 2 ? (
+        <Panel titulo="Por profesional" nota={stats.etiquetaMesActual}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-5 py-2 font-medium">Profesional</th>
+                  <th className="px-5 py-2 text-right font-medium">Turnos</th>
+                  <th className="px-5 py-2 text-right font-medium">Ingresos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {porMiembro.map((m) => (
+                  <tr
+                    key={m.miembroId}
+                    className="border-b border-border/60 last:border-0"
+                  >
+                    <td className="px-5 py-2.5 font-medium">{m.nombre}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-muted-foreground">
+                      {m.turnos}
+                    </td>
+                    <td className="px-5 py-2.5 text-right tabular-nums">
+                      {formatoARS.format(m.ingresos)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      ) : null}
 
       {/* Día de la semana */}
       <Panel
