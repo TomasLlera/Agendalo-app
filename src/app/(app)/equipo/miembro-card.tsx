@@ -41,52 +41,55 @@ export function MiembroCard({ miembro }: { miembro: MiembroCardData }) {
   }
 
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-surface p-5">
-      <div className="flex items-center gap-3">
-        {miembro.fotoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={miembro.fotoUrl}
-            alt={miembro.nombre}
-            className="size-11 shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-elevated ring-1 ring-secondary/30">
-            <User className="size-5 text-muted-foreground" strokeWidth={1.5} />
-          </span>
-        )}
-        <h3 className="min-w-0 truncate font-medium">{miembro.nombre}</h3>
+    <div className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-elevated/50">
+      {miembro.fotoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={miembro.fotoUrl}
+          alt={miembro.nombre}
+          className="size-10 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-elevated ring-1 ring-secondary/30">
+          <User className="size-5 text-muted-foreground" strokeWidth={1.5} />
+        </span>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <h3 className="truncate font-medium">{miembro.nombre}</h3>
+        <div className="flex flex-wrap gap-1.5">
+          {miembro.servicios.length > 0 ? (
+            miembro.servicios.map((nombre) => (
+              <Badge key={nombre} variant="outline">
+                {nombre}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-xs text-subtle">
+              Sin servicios asignados.
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {miembro.servicios.length > 0 ? (
-          miembro.servicios.map((nombre) => (
-            <Badge key={nombre} variant="outline">
-              {nombre}
-            </Badge>
-          ))
-        ) : (
-          <span className="text-xs text-subtle">Sin servicios asignados.</span>
-        )}
-      </div>
-
-      <div className="mt-5 flex gap-2 border-t border-border pt-4">
+      <div className="flex shrink-0 items-center gap-1">
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
           nativeButton={false}
           render={<Link href={`/equipo/${miembro.id}/editar`} />}
+          aria-label={`Editar ${miembro.nombre}`}
         >
           <Pencil strokeWidth={1.5} />
-          Editar
         </Button>
         <Button
-          variant="destructive"
-          size="sm"
+          variant="ghost"
+          size="icon"
           onClick={() => setConfirmOpen(true)}
+          aria-label={`Eliminar ${miembro.nombre}`}
+          className="text-muted-foreground hover:text-destructive"
         >
           <Trash2 strokeWidth={1.5} />
-          Eliminar
         </Button>
       </div>
 

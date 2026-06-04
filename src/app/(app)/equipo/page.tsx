@@ -125,7 +125,7 @@ export default async function EquipoPage() {
           </Button>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
           {miembros.map((miembro) => (
             <MiembroCard
               key={miembro.id}
