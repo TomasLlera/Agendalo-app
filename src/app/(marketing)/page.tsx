@@ -616,8 +616,8 @@ function Contacto() {
           <HeartHandshake className="size-4 text-secondary" strokeWidth={1.5} />
         </span>
         <p className="flex-1 text-sm text-muted-foreground">
-          No te dejamos solo. Atención personalizada en castellano y soporte
-          rápido cuando lo necesites.
+          No te dejamos solo. Atención personalizada y soporte rápido cuando lo
+          necesites.
         </p>
         <Button
           variant="outline"
