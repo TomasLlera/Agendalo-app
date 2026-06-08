@@ -19,40 +19,40 @@ const PROFESIONES: Profesion[] = [
     gradient: "from-rose-400 to-rose-700",
     nombre: "Peluquería",
     icon: Scissors,
-    label: "Peluqueros & Barberos",
+    label: "Peluquería & Barbería",
     texto: "text-rose-600 dark:text-rose-400",
   },
   {
     gradient: "from-emerald-400 to-emerald-700",
     nombre: "Kinesiología",
     icon: Dumbbell,
-    label: "Kinesiólogos & Fisio",
+    label: "Kinesiología & Fisioterapia",
     texto: "text-emerald-600 dark:text-emerald-400",
   },
   {
     gradient: "from-amber-400 to-amber-700",
     nombre: "Tatuajes",
     icon: PenTool,
-    label: "Tatuadores",
+    label: "Tatuajes & Arte corporal",
     texto: "text-amber-600 dark:text-amber-400",
   },
   {
     gradient: "from-sky-400 to-sky-700",
     nombre: "Psicología",
     icon: Brain,
-    label: "Psicólogos & Psiquiatras",
+    label: "Psicología & Terapia",
     texto: "text-sky-600 dark:text-sky-400",
   },
   {
     gradient: "from-violet-400 to-violet-700",
     nombre: "Educación",
     icon: Plus,
-    label: "Y muchos más",
+    label: "Y muchos rubros más",
     texto: "text-violet-600 dark:text-violet-400",
   },
 ];
 
-const DEFAULT_LABEL = "La agenda de los profesionales independientes";
+const DEFAULT_LABEL = "Hecho para profesionales independientes";
 
 /**
  * Pill de social proof con avatares interactivos. Cada color representa una

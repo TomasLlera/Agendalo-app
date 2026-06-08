@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { animate } from "animejs";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  BarChart3,
-  CalendarDays,
   CalendarX2,
-  Clock,
   CreditCard,
   Globe,
   Landmark,
   Phone,
-  TrendingUp,
   User2,
   Wallet,
 } from "lucide-react";
@@ -28,14 +23,6 @@ type Mock = {
 
 const MOCKS: Mock[] = [
   {
-    id: "agenda",
-    titulo: "Agenda",
-    url: "agendalo.app/dashboard",
-    bajada: "Tus próximos turnos agrupados por día, con su estado de pago.",
-    icon: CalendarDays,
-    render: <MockAgenda />,
-  },
-  {
     id: "publica",
     titulo: "Página pública",
     url: "agendalo.app/p/mara",
@@ -44,12 +31,12 @@ const MOCKS: Mock[] = [
     render: <MockPublica />,
   },
   {
-    id: "estadisticas",
-    titulo: "Estadísticas",
-    url: "agendalo.app/estadisticas",
-    bajada: "Tu panel contable: ingresos por mes, por servicio y por día.",
-    icon: BarChart3,
-    render: <MockEstadisticas />,
+    id: "perfil",
+    titulo: "Perfil",
+    url: "agendalo.app/perfil",
+    bajada: "Personalizá tu perfil, tu link y tus servicios.",
+    icon: User2,
+    render: <MockPerfil />,
   },
   {
     id: "cobros",
@@ -58,14 +45,6 @@ const MOCKS: Mock[] = [
     bajada: "Cobrá con Mercado Pago, transferencia o efectivo. Vos elegís.",
     icon: CreditCard,
     render: <MockPagos />,
-  },
-  {
-    id: "perfil",
-    titulo: "Perfil",
-    url: "agendalo.app/perfil",
-    bajada: "Personalizá tu perfil, tu link y tus servicios.",
-    icon: User2,
-    render: <MockPerfil />,
   },
   {
     id: "cancelados",
@@ -77,209 +56,205 @@ const MOCKS: Mock[] = [
   },
 ];
 
-export function AppCarousel() {
-  const [index, setIndex] = useState(0);
-  const stageRef = useRef<HTMLDivElement | null>(null);
-  const pausedRef = useRef(false);
+type Carta = { uid: number; mock: number };
 
-  // Autoplay: avanza cada 5s. Se pausa al hover/focus (pausedRef) y se
-  // desactiva si el usuario prefiere menos movimiento.
-  useEffect(() => {
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    if (reduceMotion) return;
-    const id = window.setInterval(() => {
-      if (!pausedRef.current) {
-        setIndex((i) => (i + 1) % MOCKS.length);
-      }
-    }, 5000);
-    return () => window.clearInterval(id);
+const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+const SALIDA = 380; // ms que tarda la carta de arriba en volar
+
+// Estilo de cada slot del mazo (de adelante hacia atrás). Concéntricas: sólo
+// escalan desde el centro, así las de atrás asoman parejo por los 4 lados.
+const SLOTS = [
+  { transform: "scale(1)", opacity: 1, zIndex: 30 },
+  { transform: "scale(0.96)", opacity: 1, zIndex: 20 },
+  { transform: "scale(0.92)", opacity: 0.7, zIndex: 10 },
+] as const;
+
+// Estilo de la carta que vuela hacia la izquierda al avanzar.
+const VUELA = {
+  transform: "translateX(-115%) rotate(-14deg) scale(1)",
+  opacity: 0,
+  zIndex: 40,
+} as const;
+
+export function AppCarousel() {
+  // Los uids 0,1,2 ya los usan las cartas iniciales; el contador sigue en 3.
+  const uidRef = useRef(3);
+  const proximoMockRef = useRef(3 % MOCKS.length);
+  const animandoRef = useRef(false);
+  const pausadoRef = useRef(false);
+
+  // Stack actual (de arriba hacia atrás). Cada carta lleva un uid propio,
+  // basado en un contador, NO en el índice del mock: así React conserva el
+  // mismo nodo del DOM mientras la carta se anima.
+  const [stack, setStack] = useState<Carta[]>(() => [
+    { uid: 0, mock: 0 },
+    { uid: 1, mock: 1 },
+    { uid: 2, mock: 2 },
+  ]);
+  const stackRef = useRef(stack);
+  const commitStack = (next: Carta[]) => {
+    stackRef.current = next;
+    setStack(next);
+  };
+
+  // Carta que está volando (se renderiza encima del mazo) y uid recién
+  // agregado al fondo (para suprimir su transición durante el primer frame).
+  const [volando, setVolando] = useState<Carta | null>(null);
+  const [freshUid, setFreshUid] = useState<number | null>(null);
+
+  const avanzar = useCallback(() => {
+    if (animandoRef.current) return;
+    const actual = stackRef.current;
+    if (actual.length < 1) return;
+    animandoRef.current = true;
+
+    // La carta de arriba sale del stack y empieza a volar; las de atrás se
+    // deslizan hacia adelante solas (cambian de slot con su CSS transition).
+    const [arriba, ...resto] = actual;
+    setVolando(arriba);
+    commitStack(resto);
+
+    window.setTimeout(() => {
+      // Se quita del DOM la que voló y se agrega una nueva al fondo (slot 2).
+      setVolando(null);
+      const mock = proximoMockRef.current;
+      proximoMockRef.current = (proximoMockRef.current + 1) % MOCKS.length;
+      const nueva: Carta = { uid: uidRef.current++, mock };
+      setFreshUid(nueva.uid); // entra sin transición (transition: none)
+      commitStack([...stackRef.current, nueva]);
+      // Tras el primer render, habilitamos su transición normal.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => setFreshUid(null)),
+      );
+      animandoRef.current = false;
+    }, SALIDA);
   }, []);
 
-  // Animar el slide actual al cambiar de tab.
+  // Autoplay cada 4s, pausado en hover/focus y desactivado con reduced-motion.
   useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const active = stage.querySelector<HTMLElement>("[data-active='true']");
-    if (!active) return;
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    if (reduceMotion) {
-      active.style.opacity = "1";
-      active.style.transform = "none";
-      return;
-    }
-    animate(active, {
-      opacity: [0, 1],
-      translateY: [10, 0],
-      duration: 450,
-      ease: "outExpo",
-    });
-  }, [index]);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => {
+      if (!pausadoRef.current) avanzar();
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [avanzar]);
 
-  const activo = MOCKS[index];
+  // El mock que está arriba define la tab activa.
+  const mockArriba = stack[0]?.mock ?? 0;
+
+  const trans = `transform ${SALIDA}ms ${EASE}, opacity ${SALIDA}ms ${EASE}`;
+
+  // Lista que se renderiza: la carta que vuela (si hay) + el stack. Todas
+  // keyeadas por uid para que React no destruya/recree nodos en la animación.
+  const cartas: { carta: Carta; estilo: React.CSSProperties }[] = [];
+  if (volando) {
+    cartas.push({ carta: volando, estilo: { ...VUELA, transition: trans } });
+  }
+  stack.forEach((carta, slot) => {
+    const base = SLOTS[Math.min(slot, SLOTS.length - 1)];
+    cartas.push({
+      carta,
+      estilo: {
+        transform: base.transform,
+        opacity: base.opacity,
+        zIndex: base.zIndex,
+        transition: carta.uid === freshUid ? "none" : trans,
+      },
+    });
+  });
 
   return (
     <div
       className="mx-auto w-full max-w-[1100px]"
-      onMouseEnter={() => (pausedRef.current = true)}
-      onMouseLeave={() => (pausedRef.current = false)}
-      onFocusCapture={() => (pausedRef.current = true)}
-      onBlurCapture={() => (pausedRef.current = false)}
+      onMouseEnter={() => (pausadoRef.current = true)}
+      onMouseLeave={() => (pausadoRef.current = false)}
+      onFocusCapture={() => (pausadoRef.current = true)}
+      onBlurCapture={() => (pausadoRef.current = false)}
     >
-      {/* Tabs. */}
+      {/* Mazo de cartas. */}
+      <div
+        className="relative mx-auto min-h-[380px] max-w-[860px] cursor-pointer select-none [perspective:1200px]"
+        onClick={avanzar}
+        role="button"
+        tabIndex={0}
+        aria-label="Siguiente pantalla"
+        onKeyDown={(ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            avanzar();
+          }
+        }}
+      >
+        {cartas.map(({ carta, estilo }) => (
+          <div
+            key={carta.uid}
+            className="absolute inset-x-0 top-0 origin-center will-change-transform"
+            style={estilo}
+          >
+            <DeckCard mock={MOCKS[carta.mock]} />
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs indicadoras de qué pantalla está arriba. */}
       <div
         role="tablist"
         aria-label="Pantallas de Agendalo"
-        className="-mx-6 mb-4 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:justify-center sm:px-0"
+        className="mt-6 flex flex-wrap justify-center gap-2"
       >
         {MOCKS.map((m, i) => {
           const Icon = m.icon;
-          const isActive = i === index;
+          const isActive = i === mockArriba;
           return (
-            <button
+            <div
               key={m.id}
-              type="button"
               role="tab"
               aria-selected={isActive}
-              onClick={() => setIndex(i)}
-              className={`inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "border-transparent bg-foreground text-background"
-                  : "border-border bg-surface/60 text-muted-foreground hover:border-border-strong hover:text-foreground"
+                  : "border-border bg-surface/60 text-muted-foreground"
               }`}
             >
               <Icon className="size-4" strokeWidth={1.75} />
               {m.titulo}
-            </button>
+            </div>
           );
         })}
       </div>
 
-      {/* Marco de navegador. */}
-      <div
-        ref={stageRef}
-        className="relative overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
-      >
-        <div className="flex items-center gap-2 border-b border-border bg-surface-elevated px-4 py-2.5">
-          <div className="flex gap-1.5">
-            <span className="size-2.5 rounded-full bg-border-strong" />
-            <span className="size-2.5 rounded-full bg-border-strong" />
-            <span className="size-2.5 rounded-full bg-border-strong" />
-          </div>
-          <span className="ml-2 truncate text-xs text-subtle">{activo.url}</span>
-          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
-            <activo.icon className="size-3" strokeWidth={1.75} />
-            {activo.titulo}
-          </span>
-        </div>
-
-        {/* Stage — sólo se monta el slide activo. */}
-        <div
-          role="tabpanel"
-          className="relative min-h-[420px] p-4 sm:p-6"
-        >
-          {MOCKS.map((m, i) => (
-            <div
-              key={m.id}
-              data-active={i === index}
-              className={i === index ? "block" : "hidden"}
-            >
-              {m.render}
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Caption. */}
       <p className="mt-5 text-center text-sm text-muted-foreground">
-        {activo.bajada}
+        {MOCKS[mockArriba].bajada}
       </p>
     </div>
   );
 }
 
-/* ------------------------------- Mocks --------------------------------- */
-
-function MockAgenda() {
-  const grupos = [
-    {
-      dia: "Hoy",
-      items: [
-        { hora: "09:00", cliente: "Pedro García", svc: "Corte · 30 min", estado: "ok" },
-        { hora: "10:30", cliente: "Sofía Aguirre", svc: "Color · 90 min", estado: "pago" },
-        { hora: "12:00", cliente: "Tomás Ríos", svc: "Corte + barba · 45 min", estado: "ok" },
-      ],
-    },
-    {
-      dia: "Mañana",
-      items: [
-        { hora: "15:00", cliente: "Camila Rojas", svc: "Color · 60 min", estado: "pendiente" },
-        { hora: "16:30", cliente: "Mariano D.", svc: "Brushing · 45 min", estado: "ok" },
-      ],
-    },
-  ];
+/** Una carta del mazo: marco de navegador + el mock, con alto acotado. */
+function DeckCard({ mock }: { mock: Mock }) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium">Próximos turnos</span>
-        <span className="text-[11px] text-muted-foreground">5 turnos</span>
-        <span className="ml-auto rounded-full border border-border px-2.5 py-1 text-[10px] text-muted-foreground">
-          Todos los servicios ▾
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+      <div className="flex items-center gap-2 border-b border-border bg-surface-elevated px-4 py-2.5">
+        <div className="flex gap-1.5">
+          <span className="size-2.5 rounded-full bg-border-strong" />
+          <span className="size-2.5 rounded-full bg-border-strong" />
+          <span className="size-2.5 rounded-full bg-border-strong" />
+        </div>
+        <span className="ml-2 truncate text-xs text-subtle">{mock.url}</span>
+        <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+          <mock.icon className="size-3" strokeWidth={1.75} />
+          {mock.titulo}
         </span>
       </div>
-      {grupos.map((g) => (
-        <div key={g.dia} className="space-y-2">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            {g.dia}
-          </p>
-          {g.items.map((t) => (
-            <div
-              key={t.hora}
-              className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3"
-            >
-              <div className="flex w-14 items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="size-3" strokeWidth={1.75} />
-                {t.hora}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{t.cliente}</p>
-                <p className="truncate text-[11px] text-muted-foreground">
-                  {t.svc}
-                </p>
-              </div>
-              <EstadoPill estado={t.estado} />
-            </div>
-          ))}
-        </div>
-      ))}
+      <div className="h-[320px] overflow-hidden p-4 sm:p-6">
+        {mock.render}
+      </div>
     </div>
   );
 }
 
-function EstadoPill({ estado }: { estado: string }) {
-  if (estado === "pago") {
-    return (
-      <span className="shrink-0 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] text-success">
-        Pagado
-      </span>
-    );
-  }
-  if (estado === "pendiente") {
-    return (
-      <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] text-warning">
-        Pendiente pago
-      </span>
-    );
-  }
-  return (
-    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
-      Confirmado
-    </span>
-  );
-}
+/* ------------------------------- Mocks --------------------------------- */
 
 function MockPublica() {
   return (
@@ -316,55 +291,6 @@ function MockPublica() {
             </div>
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function MockEstadisticas() {
-  const kpis = [
-    { icon: Wallet, t: "Ingresos del mes", v: "$ 248.500", d: "+18,2%", up: true },
-    { icon: CalendarDays, t: "Turnos del mes", v: "32", d: "+12,5%", up: true },
-    { icon: TrendingUp, t: "Ticket promedio", v: "$ 7.765", d: null, up: true },
-  ];
-  const barras = [40, 55, 48, 70, 60, 82, 68, 90, 72, 100, 84, 95];
-  return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {kpis.map(({ icon: Icon, t, v, d, up }) => (
-          <div key={t} className="rounded-xl border border-border bg-background p-4">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-              <Icon className="size-3" strokeWidth={1.5} />
-              {t}
-            </div>
-            <p className="mt-2 text-lg font-semibold tracking-tight">{v}</p>
-            {d ? (
-              <p
-                className={`mt-1 text-[10px] ${up ? "text-success" : "text-destructive"}`}
-              >
-                {d} vs mes anterior
-              </p>
-            ) : (
-              <p className="mt-1 text-[10px] text-subtle">Promedio por turno</p>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="rounded-xl border border-border bg-background p-4">
-        <div className="flex items-baseline justify-between">
-          <p className="text-xs font-medium">Ingresos por mes</p>
-          <span className="text-[10px] text-muted-foreground">12 meses</span>
-        </div>
-        <div className="mt-4 flex h-24 items-end gap-1.5">
-          {barras.map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-secondary/60"
-              style={{ height: `${h}%` }}
-              title={`${h}%`}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );

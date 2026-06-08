@@ -9,6 +9,8 @@ import {
   MessageCircle,
   Minus,
   Sparkles,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +72,9 @@ export default function LandingPage() {
       <Section id="mas-funciones">
         <MasFunciones />
       </Section>
+      <Section id="equipo">
+        <EquipoSection />
+      </Section>
       <Section id="screens">
         <Screens />
       </Section>
@@ -128,17 +133,15 @@ function Hero() {
           data-reveal
           className="mt-8 max-w-5xl text-5xl font-bold leading-[0.95] tracking-tighter sm:text-7xl md:text-[5.5rem]"
         >
-          La forma más simple
+          La manera simple
           <br className="hidden sm:block" />
-          <span className="text-gradient-brand"> para gestionar tus turnos</span>
+          <span className="text-gradient-brand"> de organizar tus turnos</span>
         </h1>
         <p
           data-reveal
           className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg"
         >
-          Una herramienta diseñada para ayudarte en el día a día: compartí tu
-          link de reservas, organizá tu agenda y cobrá con Mercado Pago. Todo
-          desde un solo lugar.
+          Gestioná reservas, coordiná tu agenda y cobrá fácil.
         </p>
         <div
           data-reveal
@@ -162,13 +165,6 @@ function Hero() {
             Ver precios
           </Button>
         </div>
-        <p data-reveal className="mt-4 text-xs text-subtle">
-          Gratis para siempre. Activá WhatsApp y cobros online por{" "}
-          <span className="text-foreground/80">
-            {formatoARS.format(PRECIO_PRO_ARS)}/mes
-          </span>{" "}
-          cuando lo necesites.
-        </p>
         <div data-reveal className="mt-10">
           <SocialProofPill />
         </div>
@@ -326,12 +322,156 @@ function Screens() {
           Una herramienta clara, sin curva de aprendizaje
         </h2>
         <p className="mt-3 text-sm text-muted-foreground">
-          Recorré las pantallas principales y mirá cómo se ve Agendalo por dentro.
+          Tu página pública, tu perfil, los cobros y el historial: mirá cómo se
+          ve cada pantalla por dentro.
         </p>
       </header>
       <div className="mt-8">
         <AppCarousel />
       </div>
+    </div>
+  );
+}
+
+const EQUIPO_BULLETS = [
+  "Sumá a cada persona que atiende y elegí qué servicios da.",
+  "Tus clientes eligen con quién se atienden al reservar.",
+  "Cada profesional tiene su propia agenda: sin choques de horarios.",
+] as const;
+
+const EQUIPO_MIEMBROS = [
+  { nombre: "Mara López", rol: "Dueña", servicios: ["Corte", "Color"] },
+  { nombre: "Juli Pérez", rol: "Estilista", servicios: ["Corte", "Brushing"] },
+  { nombre: "Tom Ríos", rol: "Barbero", servicios: ["Corte + barba"] },
+] as const;
+
+function iniciales(nombre: string) {
+  return nombre
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function EquipoSection() {
+  return (
+    <div className="mx-auto w-full max-w-[1100px]">
+      <header className="mx-auto max-w-2xl text-center">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-secondary">
+          Equipo
+        </p>
+        <h2 className="mt-3 text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">
+          ¿Trabajás en equipo? Repartí los turnos
+        </h2>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Agregá a tu equipo, definí qué servicios ofrece cada persona y
+          permití que tus clientes elijan con quién reservar.
+        </p>
+      </header>
+      <MotionReveal
+        className="mt-10 grid gap-4 lg:grid-cols-2 lg:items-stretch"
+        immediate={false}
+      >
+        {/* Copy + bullets. */}
+        <div
+          data-reveal
+          className="flex flex-col justify-center rounded-2xl border border-border bg-surface/60 p-8 backdrop-blur-md"
+        >
+          <Badge variant="secondary" className="w-fit">
+            Pro
+          </Badge>
+          <h3 className="mt-4 text-2xl font-semibold tracking-tight">
+            Una agenda para todo tu equipo
+          </h3>
+          <ul className="mt-6 flex flex-col gap-3 text-sm">
+            {EQUIPO_BULLETS.map((b) => (
+              <li key={b} className="flex items-start gap-2">
+                <Check
+                  className="mt-0.5 size-4 shrink-0 text-success"
+                  strokeWidth={1.5}
+                />
+                <span className="text-muted-foreground">{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Mock: panel de equipo + selector público de profesional. */}
+        <div
+          data-reveal
+          className="flex flex-col gap-4 rounded-2xl border border-border bg-surface/60 p-5 backdrop-blur-md sm:p-6"
+        >
+          <div className="rounded-xl border border-border bg-background p-4">
+            <div className="flex items-center gap-2">
+              <Users className="size-4 text-secondary" strokeWidth={1.75} />
+              <span className="text-xs font-medium">Tu equipo</span>
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
+                <UserPlus className="size-3" strokeWidth={1.75} />
+                Nuevo miembro
+              </span>
+            </div>
+            <div className="mt-3 divide-y divide-border/70">
+              {EQUIPO_MIEMBROS.map((m) => (
+                <div key={m.nombre} className="flex items-center gap-3 py-2.5">
+                  <span className="bg-gradient-brand inline-flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white">
+                    {iniciales(m.nombre)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{m.nombre}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {m.rol}
+                    </p>
+                  </div>
+                  <div className="hidden flex-wrap justify-end gap-1 sm:flex">
+                    {m.servicios.map((s) => (
+                      <span
+                        key={s}
+                        className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-background p-4">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Al reservar · ¿Con quién querés atenderte?
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-3 text-center">
+                <span className="inline-flex size-8 items-center justify-center rounded-full bg-surface-elevated text-[10px] font-medium text-muted-foreground">
+                  ✱
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Cualquiera
+                </span>
+              </div>
+              {EQUIPO_MIEMBROS.map((m, i) => (
+                <div
+                  key={m.nombre}
+                  className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center ${
+                    i === 0
+                      ? "border-secondary/50 bg-secondary/10"
+                      : "border-border bg-surface"
+                  }`}
+                >
+                  <span className="bg-gradient-brand inline-flex size-8 items-center justify-center rounded-full text-[10px] font-semibold text-white">
+                    {iniciales(m.nombre)}
+                  </span>
+                  <span className="truncate text-[10px] font-medium">
+                    {m.nombre.split(" ")[0]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </MotionReveal>
     </div>
   );
 }
@@ -398,6 +538,7 @@ const PLAN_ROWS = [
   { feature: "Recordatorios por WhatsApp (24 h + 1 h)", free: false, pro: true },
   { feature: "Cobros y señas con Mercado Pago", free: false, pro: true },
   { feature: "Estadísticas y reportes contables", free: false, pro: true },
+  { feature: "Equipo multi-profesional", free: false, pro: true },
   { feature: "Bloqueos de agenda (vacaciones, francos)", free: true, pro: true },
 ] as const;
 

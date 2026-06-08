@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { animate } from "animejs";
+import { useEffect, useRef } from "react";
 import {
   BadgeCheck,
   CalendarOff,
@@ -90,69 +89,131 @@ const DERECHA: Extra[] = [
 ];
 
 const TODOS = [...IZQUIERDA, ...DERECHA];
+// Duplicamos el set para poder loopear de forma infinita y sin corte.
+const LOOP = [...TODOS, ...TODOS];
+
+const AUTO_SPEED = 0.5; // px por frame
+const FRICTION = 0.88; // desaceleración de la inercia al soltar
 
 /**
- * "Dial" de funciones extra: 6 íconos a cada lado de un panel central que
- * muestra la info del ítem activo. El activo se cambia con hover (desktop),
- * tap (mobile) o foco con teclado. Arranca con el primero seleccionado.
+ * Carrusel horizontal infinito de funciones extra.
+ *
+ * - Auto-scroll lento de izquierda a derecha en un único loop de RAF.
+ * - Loop sin corte: el array se duplica y, al pasar el ancho del primer set,
+ *   el offset se resetea silenciosamente (el contenido es idéntico).
+ * - Hover pausa el auto-scroll.
+ * - Drag con pointer events (mouse o touch); al soltar, la velocidad del drag
+ *   se transfiere como inercia y desacelera con FRICTION antes de retomar.
+ *
+ * El offset vive en refs (no estado) para evitar stale closures dentro del RAF.
  */
 export function ExtrasDial() {
-  const [active, setActive] = useState(0);
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const offsetRef = useRef(0); // translateX actual del track (px)
+  const setWidthRef = useRef(0); // ancho de un set (medido del DOM)
+  const hoverRef = useRef(false);
+  const draggingRef = useRef(false);
+  const velocityRef = useRef(0); // último delta de drag por frame
+  const inertiaRef = useRef(0); // velocidad residual tras soltar
+  const lastXRef = useRef(0);
+  const reducedRef = useRef(false);
 
-  // Fade sutil del panel al cambiar de ítem (respeta reduced-motion).
   useEffect(() => {
-    const el = panelRef.current;
-    if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    animate(el, {
-      opacity: [0, 1],
-      translateY: [6, 0],
-      duration: 300,
-      ease: "outQuad",
-    });
-  }, [active]);
+    const track = trackRef.current;
+    if (!track) return;
 
-  const item = TODOS[active];
-  const Icon = item.icon;
+    reducedRef.current = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    // El ancho del primer set = posición del primer ítem del set duplicado.
+    const measure = () => {
+      const first = track.children[0] as HTMLElement | undefined;
+      const marker = track.children[TODOS.length] as HTMLElement | undefined;
+      if (first && marker) {
+        setWidthRef.current = marker.offsetLeft - first.offsetLeft;
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(track);
+
+    let raf = 0;
+    const tick = () => {
+      const setW = setWidthRef.current;
+      if (setW > 0) {
+        if (draggingRef.current) {
+          // El offset lo maneja onPointerMove; acá no tocamos nada.
+        } else if (Math.abs(inertiaRef.current) > 0.1) {
+          offsetRef.current += inertiaRef.current;
+          inertiaRef.current *= FRICTION;
+        } else if (!hoverRef.current && !reducedRef.current) {
+          offsetRef.current += AUTO_SPEED;
+        }
+
+        // Wrap silencioso dentro de (-setW, 0].
+        let tx = offsetRef.current;
+        while (tx <= -setW) tx += setW;
+        while (tx > 0) tx -= setW;
+        offsetRef.current = tx;
+
+        track.style.transform = `translate3d(${tx}px,0,0)`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, []);
+
+  const onPointerDown = (ev: React.PointerEvent<HTMLDivElement>) => {
+    draggingRef.current = true;
+    inertiaRef.current = 0;
+    velocityRef.current = 0;
+    lastXRef.current = ev.clientX;
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+  };
+
+  const onPointerMove = (ev: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    const dx = ev.clientX - lastXRef.current;
+    lastXRef.current = ev.clientX;
+    offsetRef.current += dx;
+    velocityRef.current = dx;
+  };
+
+  const endDrag = (ev: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    inertiaRef.current = velocityRef.current; // transferimos la velocidad
+    try {
+      ev.currentTarget.releasePointerCapture(ev.pointerId);
+    } catch {
+      // pointer ya liberado: ignoramos.
+    }
+  };
 
   return (
     <div className="rounded-3xl border border-border bg-surface/50 p-4 backdrop-blur-md sm:p-6">
-      <div className="grid gap-4 lg:grid-cols-[1fr_minmax(300px,380px)_1fr] lg:items-center lg:gap-6">
-        {/* Íconos izquierda. */}
-        <div className="order-2 grid grid-cols-3 gap-2 sm:grid-cols-6 lg:order-1 lg:grid-cols-1">
-          {IZQUIERDA.map((e) => (
-            <IconBtn
-              key={e.titulo}
-              e={e}
-              active={TODOS[active] === e}
-              onSelect={() => setActive(TODOS.indexOf(e))}
-            />
-          ))}
-        </div>
-
-        {/* Panel central. */}
-        <div className="order-1 flex min-h-[240px] flex-col items-center justify-center rounded-2xl border border-border bg-surface-elevated/40 p-8 text-center lg:order-2">
-          <div ref={panelRef} className="flex flex-col items-center">
-            <span className="bg-gradient-brand glow-violet inline-flex size-14 items-center justify-center rounded-2xl">
-              <Icon className="size-6 text-white" strokeWidth={1.5} />
-            </span>
-            <h3 className="mt-4 text-lg font-semibold">{item.titulo}</h3>
-            <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-              {item.cuerpo}
-            </p>
-          </div>
-        </div>
-
-        {/* Íconos derecha. */}
-        <div className="order-3 grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-1">
-          {DERECHA.map((e) => (
-            <IconBtn
-              key={e.titulo}
-              e={e}
-              active={TODOS[active] === e}
-              onSelect={() => setActive(TODOS.indexOf(e))}
-            />
+      <div
+        className="cursor-grab touch-pan-y overflow-hidden active:cursor-grabbing"
+        onMouseEnter={() => (hoverRef.current = true)}
+        onMouseLeave={() => (hoverRef.current = false)}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
+        <div
+          ref={trackRef}
+          className="flex select-none gap-3 will-change-transform"
+          style={{ transition: "none" }}
+        >
+          {LOOP.map((e, i) => (
+            <ExtraCard key={i} e={e} aria-hidden={i >= TODOS.length} />
           ))}
         </div>
       </div>
@@ -160,42 +221,24 @@ export function ExtrasDial() {
   );
 }
 
-function IconBtn({
+function ExtraCard({
   e,
-  active,
-  onSelect,
+  ...rest
 }: {
   e: Extra;
-  active: boolean;
-  onSelect: () => void;
-}) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   const Icon = e.icon;
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onMouseEnter={onSelect}
-      onFocus={onSelect}
-      onClick={onSelect}
-      className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors ${
-        active
-          ? "border-secondary/50 bg-surface-elevated text-foreground"
-          : "border-border bg-surface/40 text-muted-foreground hover:border-border-strong hover:text-foreground"
-      }`}
+    <div
+      {...rest}
+      className="flex shrink-0 flex-col rounded-2xl border border-border bg-surface-elevated/40 p-5"
+      style={{ width: "calc(33.33% - 8px)" }}
     >
-      <span
-        className={`inline-flex size-9 items-center justify-center rounded-lg ring-1 transition-colors ${
-          active
-            ? "bg-secondary/15 ring-secondary/40"
-            : "bg-surface-elevated ring-secondary/15"
-        }`}
-      >
-        <Icon
-          className={active ? "size-4 text-secondary" : "size-4"}
-          strokeWidth={1.5}
-        />
+      <span className="bg-gradient-brand glow-violet inline-flex size-11 items-center justify-center rounded-xl">
+        <Icon className="size-5 text-white" strokeWidth={1.5} />
       </span>
-      <span className="text-[11px] font-medium leading-tight">{e.titulo}</span>
-    </button>
+      <h3 className="mt-4 text-base font-semibold leading-tight">{e.titulo}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{e.cuerpo}</p>
+    </div>
   );
 }
